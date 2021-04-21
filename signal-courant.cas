@@ -1,0 +1,147 @@
+restart;
+// fonctions pour rendre periodique un signal
+//(num -> num) x num -> (num -> num)
+periodise(f,p) := {
+  local x;
+  purge(x);
+  unapply(f(x - floor(x/p) * p),x);
+}:;
+
+// pour le discretiser
+// (num -> num) x num x int -> sequence(num)
+discretise(f,dx,n) := {
+  local k;
+  purge(k);
+  seq(f(k*dx),k,0,n-1);
+}:;
+
+// convolution de 2 fonctions 
+// attention pas de distributions a voir ...
+// (num -> num) x (num -> num) x num x num -> (num -> num)
+convol(f,g,a,b) := {
+   local u,x;
+   purge(u);
+   purge(x);
+   unapply(int(f(u)*g(x-u),u,a,b),x) ;
+}:;
+
+// peigne de dirac
+// num x int -> (num -> num)
+pgn(To,n) := { 
+  local k,x;
+  purge(k);
+  purge(x);
+  unapply(sum(Dirac(x-k*To),k,0,n),x);
+}:;
+
+// fonction porte de largeur 1 centree en 0
+ugate(x) := Heaviside(x + 1/2) - Heaviside(x - 1/2):;
+
+// fonction porte largeur l retardee de r
+// num -> num
+gate(l,r) := {
+  local x;
+  purge(x);
+  unapply(ugate((x-r)/l),x);
+}:;
+
+// signal carre
+// num -> (num -> num)
+sqs(p) := {
+  local x;
+  purge(x);
+  periodise(gate(p/2,p/4),p);
+}:;
+
+// signal sinus de periode Ts redresse decoupe a 1/Td Hz
+// num x num -> (num -> num)
+sig(Ts,Td) := {
+  local x,u,hash;
+  purge(x);
+  purge(u);
+  hash := periodise(gate(Td/2,Td/4),Td);
+  //unapply(hash(u)*abs(sin(2*pi*u/Ts)),u);
+  unapply(hash(u)*abs(sin(2*pi*u/Ts)),u);
+}:;
+
+// echantillonage
+
+Fd  := 512:;
+Fe  := Fd*16:;
+vTe := seq(k*1/Fe,k,0,511):;
+dsig := seq(evalf(sig(1/50,1/512)(k*1/Fe+1/1024)),k,0,511):;
+diff_sig := unapply(diff(sig(1/50,1/512)(x),x),x):;
+diff_dsig := seq(evalf(diff_sig(k*1/Fe+1/1024)),k,0,511):;
+
+// impossible de cette maniere d'avoir les fft des signaux !!!! ????
+// peut etre a cause de floor() dans la definition periodise()
+// pas moyen d'utiliser le produit de convolution comme il est
+// defini sur une distribution etc ... bloque pour le mement !!!
+
+
+///////////////////////////////////////////////////////////////////////////////////////
+//               divers essais
+///////////////////////////////////////////////////////////////////////////////////////
+
+// rect(500e-6,250e-6)
+//g := unapply(gate(x,500e-6),x):;
+
+// peigne au pas 1/1000 tronque a 100ms
+//pg := unapply(pgn(x,1/1000,100),x):;
+
+// signal: convolution( pgn(x,To,n) , gate(x,To/2) ) * sin(2*pi*x/Tp)
+//sig := convolution( pgn(x,To,5),gate(x,To/2) ) * sin(2*pi*x/Tp):;
+//sig := convolution( Dirac(x-To),gate(x,To/2) ) * sin(2*pi*x/Tp):;
+
+//pgate(x,a,p) := unapply(subst(gate,x=x-floor(x/p)*p),x,a,p):;
+//pgate := subst(gate,x=x-floor(x/2/Tg)*2*Tg):;
+//sig := pgate * abs(sin(2*pi*x/Tp)):;
+//dsig := diff(sig,x):;
+
+
+
+
+//fsec := 50:; fsq := 1000:;
+// nombre de coeff voulus
+//ncn := 7:;
+
+
+//pgate(x,a,p) := {
+//	   assume(p>0);  
+//	   gate(a)(x - floor(x/p)*p);
+//};
+
+// coefficients cn du developpement en serie de pgate(x)
+//assume(p>0);
+//l1_cn := seq(fourier_cn(pgate(x,p/2,p),x,p,k,0),k,1,ncn,2):;
+//print("harmonique pgate(x):",abs(l1_cn));
+
+// derivee : attention diff() renvoie une expression, unapply en fait une fonction
+//dpgate := unapply(diff(pgate(x,a,p),x),x,a,p);
+//l2_cn := seq(fourier_cn(dpgate(x,p/2,p),x,p,k,0),k,1,ncn,2):;
+//print("harmonique dpgate(x):",abs(l2_cn));
+
+
+//signal: sinus  redresse et decoupe 
+//sig := unapply(pgate(1/(2*fsq),1/fsq) * abs(sin(2*pi*fsec*x)),x,fsq,fsec):;
+
+
+
+// coefficients cn du developpement en serie de sig(x)
+//l_cn := seq(fourier_cn(sig(x),x,20e-3,k*20,0),k,1,ncn,2):;
+//print("harmonique sig(x):",abs(l_cn));
+
+//squ(x,a,p) := msq(x - floor(x/p) * p,a);
+//squ := unapply(msq(x - floor(x/p) * p,a),x,a,p);
+
+//sinsq := unapply(squ(x,a,p)*sin(x),x,a,p);
+//sinsq(x,a,p,f) := squ(x,a,p)*abs(sin(2*pi*f*x));
+
+// fourier_cn(sinsq(x,500e-6,1e-3,50),x,20e-3,60,0)
+// l_cn := seq(fourier_cn(sinsq(x,500e-6,1e-3,50),x,20e-3,k*20,0),k,1,7,2)
+// attention pour Dirac(x-a) a doit etre p/q 
+// evalf(seq(int(Dirac(x-k*1/1000)*sin(2*pi*50*x),x,0,1/100),k,0,10))
+// f2(x) := periodise(msq(500e-6),1e-3);
+
+
+

@@ -1,0 +1,3 @@
+read("functions.cas");
+// sig(t) = sin(t) for t=0..Tm/2 , 0 otherwise
+sig(t):=sin(2*pi*t/Tm)*gate(Tm/2,Tm/4)(t);

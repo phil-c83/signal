@@ -1,0 +1,36 @@
+restart;
+// equation de la tension Vs a la sortie du convertisseur
+// i(t) = C dv/dt + v/R ==> i(t)/C = dv/dt + v/RC 
+// i(t) = -at+Io , v(0)=Vo ; 
+// Io courant dans L ie i(0), Vo tension de sortie ie Vs(0)
+// -a pente ie -Io/dt (-5/167e-6 en 230Veff)
+
+find_R(V,dt,Ve,Imax,Cap) := {
+
+	local Vn,Rn;		
+	
+	print(type(V));
+	print("params:",V,dt,Ve,Imax,Cap);
+
+	Vn:=subst(V,[C=cap,Io=Imax,Vo=2.0*sqrt(2.0)*Ve,a=Imax/dt,t=dt]);
+	print(Vn);
+	Rn:=newton(Vn=1.1*2.0*sqrt(2.0)*Ve,R,100);
+	
+	return Rn;
+
+};
+
+
+//V:=dsolve(diff(v(t),t)+v/(R*C)=(-a*t+Io)/C,v(0)=Vo):;
+
+//dt230:= 167e-6:;
+//V230:=subst(V,[C=5e-6,Io=5.0,Vo=2.0*230.0*sqrt(2.0),a=5.0/dt230,t=dt230]):;
+
+//dt115:=367e-6:;
+//V115:=subst(V,[C=5e-6,Io=5.0,Vo=2.0*115.0*sqrt(2.0),a=5.0/dt115,t=dt115]):;
+
+//R230:=newton(V230=1.1*2.0*230*sqrt(2.0),R,100)
+
+//R115:=newton(V115=1.1*2.0*115*sqrt(2.0),R,100)
+
+

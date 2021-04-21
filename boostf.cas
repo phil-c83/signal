@@ -1,0 +1,68 @@
+restart;
+
+
+/*  equation de la tension Vs a la sortie du convertisseur
+	i(t) = C dv/dt + v/R ==> i(t)/C = dv/dt + v/RC 
+	i(t) = -at+Io , v(0)=Vo ; 
+	Io courant dans L ie i(0), Vo tension de sortie ie Vs(0)
+	-a pente ie -Io/dt (-5/167e-6 en 230Veff)
+*/
+
+/* chercher la valeur de R qui limite dv à k*v
+   L:self Rl:resistance self Ve: tension reseau
+   Imax :courant à t=0 Cap:capacité k: coef variation tension
+*/  
+find_r(L,Rl,Ve,Imax,Cap,k) := {
+
+	local v,dv,vr,dvr,t_vmax,ode,vmax;
+	local ton := -L/Rl*ln(1-(Rl*Imax)/Ve);
+	local Vs := 2.0*Ve;
+	
+	purge(v);
+	purge(vr);
+	purge(dvr);	
+	purge(ode);	
+	
+	printf("Ve=%gen Vs=%gen ton=%gen",Ve,Vs,ton);	
+	
+	// ode definissant tension v (tension de sortie)
+	ode:= diff(v(t),t)+v/(R*C)+(a*t-Io)/C;	
+	//v:=dsolve([ode,v(0)=2*Ve],t,v);
+	v:=dsolve([ode,v(0)=Vo],t,v);
+	print(v);
+	//plot(subst(v,[C=5e-6,Io=5,Vo=650,a=29930,R=73]),t=0..167e-6)
+	dv :=diff(v,t);
+	print(dv);
+	t_vmax := solve(dv=0,t);
+	print(t_vmax);
+	vmax := subst(v,t=t_vmax[0]);
+	print(vmax);
+	vmax := subst(vmax,[C=Cap,Io=Imax,a=Imax/ton,Vo=Vs]);
+	print(vmax);
+	// chercher R qui satisfait aux conditions
+	newton(vmax=k*Vs,R,100,50);
+	
+	/*
+	// fixer les valeurs des variables
+	vr:=subst(vmax,[C=Cap,Io=Imax,a=Imax/ton,Vo=Vs]);
+	print(vr);
+	// deriver pour trouver le max 
+	dvr:=diff(vr,t);
+	print(dvr);	
+	// chercher le t pour max(v(t)) fonction de R
+	sol:=solve(dvr=0,t);
+	printf("sol:%gen",sol[0]);
+	//substituer ds l'equation la valeur de t
+	vmax := subst(vr,t=sol[0]);
+	print(vmax);
+	// chercher R qui satisfait aux conditions
+	newton(vmax=k*Vs,R,100);
+	*/
+};
+
+
+
+find_r(10e-3,10,325,5,5e-6,1.1);
+//find_r(10e-3,10,163,5,5e-6,1.1);
+
+
