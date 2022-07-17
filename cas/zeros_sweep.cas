@@ -1,0 +1,19 @@
+// value of t where s(t):=sin(2*pi*((f1-f0)/(2*P)*t^2+f0*t)) vanish
+// ie (f1-f0)/(2*P)*t^2 + f0*t - k/2 == 0
+// with a=(f1-f0)/(2*P) b=f0  c=-k/2, delta=b^2 - 4*a*c  
+// tk = (-2*b +/- sqrt(delta))/2*a
+f0 := 8:;
+f1 := 20:;
+P  := 1:;
+a := (f1-f0)/(2*P):;
+b := f0;
+c := -k/2:;
+delta := b^2 - 4*a*c:;
+jmax := 2*a*P^2 + 2*b*P:;
+tk := seq(evalf((-b + sqrt(subst(delta,k=j)))/(2*a)),j=0..jmax):;
+tkv := makevector(tk):;
+// evalf(sin(2*pi*(a*tkv.^2 + b*tkv))); // verify that s(tk(i)) == 0
+swp:= sum((-1)^(k)*Heaviside(x-tk(k+1)),k,0,jmax):;
+
+//plot(swp,x=0..1) // segmentation fault with plot into script
+
