@@ -1,0 +1,9 @@
+// detection sens du signal pour jupiter
+sinc(x):=sin(x)/x;
+
+X1(f,T1,T):=exp(-i*pi*f*T1)*sinc(pi*T1*f);
+X2(f,T1,T):=-exp(-i*pi*f(T-T1))*sinc(pi*(T-T1)*f);
+X(f,T1,T):=X1(f,T1,T)+X2(f,T1,T);
+
+// plot(abs(X1(f,1/3,1))-abs(X2(f,1/3,1)),f=-10..10)
+// plot(abs(X(f,1/3,1))f=-10..10);
