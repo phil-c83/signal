@@ -2,10 +2,22 @@ pkg load signal
 clear all;
 close all;
 %graphics_toolkit("qt"); set in .octaverc
+Freqs=[410,440,470,520,560,590,610,640,670,710,740,770];
 nT  = 0.1;
 N   = 1024;
 Te = nT/N;
 Fe  = 1/Te;
+
+function idx=Freq2FftIndex(f,df,N)
+  k = round(abs(f/df));
+  if ( f>0 )
+    idx = k+1;
+  elseif ( f<0 )
+    idx = N-k+1;
+  else
+    idx = 1;
+  endif
+endfunction  
 
 function [nTe,y]=zero_mean_rect(A,Fe,T1,T)
   nTe = 0:1/Fe:T-1/Fe;
@@ -21,119 +33,75 @@ function [nTe,y]=zero_mean_rect_train(A,Fe,T1,T,nT)
   y   =  pulstran(nTe,d1,"rectpuls",T1) - pulstran(nTe,d2,"rectpuls",T-T1);
 endfunction
 
-function yfft=plot_fft_signal(nTe,y,T,draw)
+function plot_fft_signal(nTe,y,yfft)
   N = length(nTe);
   Fe = 1/(nTe(2)-nTe(1));
   dF = Fe/N;
   ndF = -Fe/2:dF:Fe/2-dF;
-  yfft=fft(y(1:1024));
-  yffts=fftshift(yfft);
-  if (draw) 
-    figure;
-    subplot(3,1,1);
-    plot(nTe,y,"--.k;sig;");
-    subplot(3,1,2);
-    plot(ndF,abs(yffts)/N,"--.b;mods;");
-    subplot(3,1,3);
-    plot(ndF,arg(yffts)*180/pi,"--.g;args;");  
-    figure;
-    plot3(ndF,yffts);
+  yffts = fftshift(yfft);
+  figure;
+  subplot(3,1,1);
+  plot(nTe,y,"--.k;sig;");
+  subplot(3,1,2);
+  plot(ndF,abs(yffts)/N,"--.b;mods;");
+  subplot(3,1,3);
+  plot(ndF,arg(yffts)*180/pi,"--.g;args;");  
+  figure;
+  plot3(ndF,yffts);  
+endfunction  
+
+function q=quadran(z)
+  th=arg(z);
+  if(th>=0)
+    if(th>pi/2)
+      q=2;
+    else
+      q=1;
+    endif  
+  else
+    if(th<-pi/2)
+      q=3;
+    else
+      q=4;
+    endif  
   endif
-  % attention au calcul des indices: si floor au lieu de round
-  idx0 = round(1/T/dF+1);  % fondamental index ie +1/T
-  idx1 = round(2/T/dF+1);  % 1st hamonic index ie +2/T
-  idx2 = round(N-(1/T/dF-1));  % fondamental index ie -1/T
-  idx3 = round(N-(2/T/dF-1));  % 1st hamonic index ie -2/T
-  printf("1/T=%f abs(fft(1/T))=%f arg(fft(1/T))=%f abs(fft(2/T))=%f arg(fft(2/T))=%f\n",
-          1/T,abs(yfft(idx0))/N,arg(yfft(idx0))*180/pi,abs(yfft(idx1))/N,arg(yfft(idx1))*180/pi);
-  printf("1/T=%f abs(fft(-1/T))=%f arg(fft(-1/T))=%f abs(fft(-2/T))=%f arg(fft(-2/T))=%f\n",
-          1/T,abs(yfft(idx2))/N,arg(yfft(idx2))*180/pi,abs(yfft(idx3))/N,arg(yfft(idx3))*180/pi); 
-  printf("idx0=%d idx1=%d idx2=%d idx3=%d 2/T=%f\n",idx0,idx1,idx3,idx4,2/T); 
-          
-  %printf("T=%f abs(fft(1/T))=%f arg(fft(1/T))=%f abs(fft(1/(2*T)))=%f arg(fft(1/(2*T)))=%f\n",
-  %        T,abs(yfft(idx0)),arg(yfft(idx0))*180/pi,abs(yfft(idx1)),arg(yfft(idx1))*180/pi);
 endfunction
 
-
-
-% signal 410Hz
-F=410;
-printf("\nF=%f\n",F);
-[nTe,y]=zero_mean_rect_train(1,Fe,3/F/5,1/F,2*nT);
-% f(t)
-yfft=plot_fft_signal(nTe(1:1024),y(1:1024),1/F,1);
-%f(t-5*Te)
-yfft=plot_fft_signal(nTe(6:1029),y(6:1029),1/F,1);
-% -f(t)
-yfft=plot_fft_signal(nTe(1:1024),-y(1:1024),1/F,0);
-% -f(t-5*Te)
-yfft=plot_fft_signal(nTe(6:1029),-y(6:1029),1/F,0);
-
-% signal 440Hz
-F=440;
-printf("\nF=%f\n",F);
-[nTe,y]=zero_mean_rect_train(1,Fe,3/F/5,1/F,2*nT,0);
-% f(t)
-yfft=plot_fft_signal(nTe(1:1024),y(1:1024),1/F,0);
-%f(t-5*Te)
-yfft=plot_fft_signal(nTe(6:1029),y(6:1029),1/F,0);
-% -f(t)
-yfft=plot_fft_signal(nTe(1:1024),-y(1:1024),1/F,0);
-% -f(t-5*Te)
-yfft=plot_fft_signal(nTe(6:1029),-y(6:1029),1/F,0);
-
-
-% signal 470Hz
-F=470;
-printf("\nF=%f\n",F);
-[nTe,y]=zero_mean_rect_train(1,Fe,3/F/5,1/F,2*nT,0);
-% f(t)
-yfft=plot_fft_signal(nTe(1:1024),y(1:1024),1/F,0);
-%f(t-5*Te)
-yfft=plot_fft_signal(nTe(6:1029),y(6:1029),1/F,0);
-% -f(t)
-yfft=plot_fft_signal(nTe(1:1024),-y(1:1024),1/F,0);
-% -f(t-5*Te)
-yfft=plot_fft_signal(nTe(6:1029),-y(6:1029),1/F,0);
-
-% signal 520Hz
-F=520;
-printf("\nF=%f\n",F);
-[nTe,y]=zero_mean_rect_train(1,Fe,3/F/5,1/F,2*nT,0);
-% f(t)
-yfft=plot_fft_signal(nTe(1:1024),y(1:1024),1/F,0);
-%f(t-5*Te)
-yfft=plot_fft_signal(nTe(6:1029),y(6:1029),1/F,0);
-% -f(t)
-yfft=plot_fft_signal(nTe(1:1024),-y(1:1024),1/F,0);
-% -f(t-5*Te)
-yfft=plot_fft_signal(nTe(6:1029),-y(6:1029),1/F,0);
+function signal_harmonic_properties(nTe,y,yfft,f,k,lag,str)
+  N = length(nTe);
+  Fe = 1/(nTe(2)-nTe(1));
+  dF = Fe/N;
+  % index of f
+  idx0 = Freq2FftIndex(f,dF,N);
+  printf("%s lag=%2d f=%3.0f abs(f)=% 2.2f arg(f)=%+ 3.2f ",
+         str,lag,f,abs(yfft(idx0))/N,
+         arg(yfft(idx0))*180/pi);
+  % phase diff between i*f and f 
+  for i=2:k
+    idx = Freq2FftIndex(i*f,dF,N);    
+    printf("abs(%df)=%02.2f arg(%df)=%+03.2f arg(%df)-arg(f)=%+ 3.2f ",
+           i,abs(yfft(idx))/N,i,arg(yfft(idx))*180/pi,
+           i,arg(yfft(idx)/yfft(idx0))*180/pi);
+  endfor
+  printf("\n");
+endfunction  
 
 
 
-%{
-yfft=fft(y(1:1024));
-yfft=fftshift(yfft);
+% signal 
+for f=Freqs
+  [nTe,y]=zero_mean_rect_train(1,Fe,3/f/5,1/f,2*nT);
+  printf("\n");
+  for lag=0:floor(Fe/f)    
+    % s(t-a)
+    yfft=fft(y(1+lag:N+lag));
+    signal_harmonic_properties(nTe(1+lag:N+lag),y(1+lag:N+lag),yfft,f,3,lag," x(t)");
+    % -s(t-a)
+    yfftn=fft(-y(1+lag:N+lag));
+    signal_harmonic_properties(nTe(1+lag:N+lag),-y(1+lag:N+lag),yfftn,f,3,lag,"\t-x(t)");    
+  endfor  
+endfor
 
-%plot(-Fe/2:Fe/N:Fe/2-Fe/N,abs(yfft));
-figure;
-subplot(3,1,1);
-plot(nTe(1:1024),y(1:1024),"--.k;pulses;");
-subplot(3,1,2);
-plot(-Fe/2:Fe/N:Fe/2-Fe/N,abs(yfft),"--.b;mods;");
-subplot(3,1,3);
-plot(-Fe/2:Fe/N:Fe/2-Fe/N,arg(yfft),"--.g;args;");
 
 
-yfft=fft(-y(1:1024));
-yfft=fftshift(yfft);
-figure;
-%plot(-Fe/2:Fe/N:Fe/2-Fe/N,abs(yfft));
-subplot(3,1,1);
-plot(nTe(1:1024),-y(1:1024),"--.k;pulses;");
-subplot(3,1,2);
-plot(-Fe/2:Fe/N:Fe/2-Fe/N,abs(yfft),"--.b;mods;");
-subplot(3,1,3);
-plot(-Fe/2:Fe/N:Fe/2-Fe/N,arg(yfft),"--.g;args;");
-%}
 
