@@ -2,6 +2,18 @@ pkg load signal
 clear all;
 close all;
 %graphics_toolkit("qt"); set in .octaverc
+%{
+forme du signal à synthétiser ie créneau sans symetrie
+ ____
+|    |
+|<T1>|
+     |________|
+<      T      >      
+A*T1 = B*(T-T1) => B = A*T1/(T-T1)
+
+TF{x(t-a,T,T1)}(f) = A*T1*exp(-i*2*pi*a*f) * {exp(-i*pi*T1*f)*sinc(pi*T1*f)-exp(-i*pi*(T-T1)*f)*sinc(pi*(T-T1)*f)}
+%}
+
 Freqs=[410,440,470,520,560,590,610,640,670,710,740,770];
 nT  = 0.1;
 N   = 1024;
@@ -67,6 +79,15 @@ function q=quadran(z)
   endif
 endfunction
 
+function s=sens_detect(y)
+  iy=find(y>=0);
+  if( length(iy) > length(y)-length(iy) )
+    s=1;
+  else
+    s=0;
+  endif  
+endfunction
+
 function signal_harmonic_properties(nTe,y,yfft,f,k,lag,str)
   N = length(nTe);
   Fe = 1/(nTe(2)-nTe(1));
@@ -84,6 +105,7 @@ function signal_harmonic_properties(nTe,y,yfft,f,k,lag,str)
            i,arg(yfft(idx)/yfft(idx0))*180/pi);
   endfor
   printf("\n");
+  %printf("sens=%d\n",sens_detect(y));
 endfunction  
 
 
@@ -95,11 +117,13 @@ for f=Freqs
   for lag=0:floor(Fe/f)    
     % s(t-a)
     yfft=fft(y(1+lag:N+lag));
-    signal_harmonic_properties(nTe(1+lag:N+lag),y(1+lag:N+lag),yfft,f,3,lag," x(t)");
+    signal_harmonic_properties(nTe(1+lag:N+lag),y(1+lag:N+lag),yfft,f,3,lag," x(t)");    
+  endfor  
+  for lag=0:floor(Fe/f)        
     % -s(t-a)
     yfftn=fft(-y(1+lag:N+lag));
     signal_harmonic_properties(nTe(1+lag:N+lag),-y(1+lag:N+lag),yfftn,f,3,lag,"\t-x(t)");    
-  endfor  
+  endfor
 endfor
 
 

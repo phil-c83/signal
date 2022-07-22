@@ -125,7 +125,7 @@ L2CC_L2NCO_sign = L2CC_L2NCO_sig + noise2;
 L3CC_L3NCO_sign = L3CC_L3NCO_sig + noise3;  
 
 
-%plot(nTe,L1_sig,".-b;L1;",nTe,-L1_sig,".-r;-L1;");
+plot(nTe,L1CC_L1NCO_sig,".-b;L1;",nTe,-L1CC_L1NCO_sig,".-r;-L1;");
 
 %{
 figure;
