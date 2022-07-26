@@ -10,8 +10,11 @@ forme du signal à synthétiser ie créneau sans symetrie
      |________|
 <      T      >      
 A*T1 = B*(T-T1) => B = A*T1/(T-T1)
+x(t)=A*rect(t-T1/2,T1) - A*T1/(T-T1)*rect(t-(T1+T)/2,T-T1)
 
-TF{x(t-a,T,T1)}(f) = A*T1*exp(-i*2*pi*a*f) * {exp(-i*pi*T1*f)*sinc(pi*T1*f)-exp(-i*pi*(T-T1)*f)*sinc(pi*(T-T1)*f)}
+TF{x(t-a,T,T1)}(f) = A*T1*exp(-i*2*pi*a*f) * 
+                     {exp(-i*pi*T1*f)*sinc(pi*T1*f) - 
+                      exp(-i*pi*(T-T1)*f)*sinc(pi*(T-T1)*f)}
 %}
 
 Freqs=[410,440,470,520,560,590,610,640,670,710,740,770];
@@ -36,6 +39,7 @@ function [nTe,y]=zero_mean_rect(A,Fe,T1,T)
   y = A*rectpuls(nTe-T1/2,T1) - T1/(T-T1)*A*rectpuls(nTe-(T1+(T-T1)/2),T-T1);
 endfunction
 
+%
 function [nTe,y]=zero_mean_rect_train(A,Fe,T1,T,nT)
   nTe = ((0:1/Fe:nT-1/Fe))';
   %delay and amplitude of each signal period
@@ -44,6 +48,38 @@ function [nTe,y]=zero_mean_rect_train(A,Fe,T1,T,nT)
   d2  = [dT+(T+T1)/2,(A*T1)/(T-T1)*ones(floor(nT/T),1)];
   y   =  pulstran(nTe,d1,"rectpuls",T1) - pulstran(nTe,d2,"rectpuls",T-T1);
 endfunction
+
+%{
+x(t) = A*rect(t-T1/2,T1) - A*T1/(T-T1)*rect(t-(T1+T)/2,T-T1)
+sinc=sin(pi*x)/(pi*x)
+TF{x(t-a,T,T1)}(f) = A*T1*exp(-i*2*pi*a*f) * 
+                     {exp(-i*pi*T1*f)*sinc(T1*f) - 
+                      exp(-i*pi*(T+T1)*f)*sinc((T-T1)*f)}
+  --> -a = {arg(TF{x(t-a,T,T1)}(f)) - arg(z1-z2)} * 1/(2*pi*f)
+      z1= exp(-i*pi*T1*f)*sinc(T1*f)
+      z2= exp(-i*pi*(T+T1)*f)*sinc((T-T1)*f)
+%}                      
+function a=signal_lag(T1,T,f,arg_fft)
+  z1=exp(-i*pi*T1*f)*sinc(T1*f);
+  z2=exp(-i*pi*(T+T1)*f)*sinc((T-T1)*f);
+  argz1z2=arg(z1-z2);
+  if(argz1z2<0) argz1z2 += 2*pi; endif
+  argfft=arg_fft;
+  if( argfft<0) argfft +=2*pi; endif 
+  a = mod(argz1z2-argfft,2*pi)*1/(2*pi*f);
+  %a=(arg(z1-z2)-arg_fft)*1/(2*pi*f); 
+  % -pi < arg(z) <= +pi on veut 0 <= arg(z) < 2*pi
+  if(a<0) 
+    a = a+T;
+  endif  
+endfunction
+
+% analytic expr of X(f)
+function z=X_f(a,T1,T,f)
+  z = exp(-i*2*pi*a*f) * (
+      exp(-i*pi*T1*f)*sinc(T1*f) - 
+      exp(-i*pi*(T+T1)*f)*sinc((T-T1)*f) );  
+endfunction  
 
 function plot_fft_signal(nTe,y,yfft)
   N = length(nTe);
@@ -79,7 +115,7 @@ function q=quadran(z)
   endif
 endfunction
 
-function s=sens_detect(y)
+function s=sens_det(y)
   iy=find(y>=0);
   if( length(iy) > length(y)-length(iy) )
     s=1;
@@ -93,7 +129,7 @@ function signal_harmonic_properties(nTe,y,yfft,f,k,lag,str)
   Fe = 1/(nTe(2)-nTe(1));
   dF = Fe/N;
   % index of f
-  idx0 = Freq2FftIndex(f,dF,N);
+  idx0 = Freq2FftIndex(f,dF,N);  
   printf("%s lag=%2d f=%3.0f abs(f)=% 2.2f arg(f)=%+ 3.2f ",
          str,lag,f,abs(yfft(idx0))/N,
          arg(yfft(idx0))*180/pi);
@@ -112,18 +148,26 @@ endfunction
 
 % signal 
 for f=Freqs
-  [nTe,y]=zero_mean_rect_train(1,Fe,3/f/5,1/f,2*nT);
+  [nTe,y]=zero_mean_rect_train(1,Fe,3/f/5,1/f,2*nT);  
+  dF = Fe/N;
   printf("\n");
   for lag=0:floor(Fe/f)    
     % s(t-a)
-    yfft=fft(y(1+lag:N+lag));
-    signal_harmonic_properties(nTe(1+lag:N+lag),y(1+lag:N+lag),yfft,f,3,lag," x(t)");    
-  endfor  
-  for lag=0:floor(Fe/f)        
+    yfft = fft(y(1+lag:N+lag));
+    idx0 = Freq2FftIndex(f,dF,N);
+    idx1 = Freq2FftIndex(2*f,dF,N);
+    slag = signal_lag(3/f/5,1/f,f,arg(yfft(idx0)));
+    z    = X_f(slag,3/f/5,1/f,2*f);
+    printf(" S(t) f=%d lag=%f idf=%d idx2f=%d arg(X(f))=%f arg(X(2f))=%f *--* sig_lag=%f arg(X(2*f))=%f\n",
+            f,lag/Fe,idx0,idx1,arg(yfft(idx0)),arg(yfft(idx1)),slag,arg(z));
+    
     % -s(t-a)
-    yfftn=fft(-y(1+lag:N+lag));
-    signal_harmonic_properties(nTe(1+lag:N+lag),-y(1+lag:N+lag),yfftn,f,3,lag,"\t-x(t)");    
-  endfor
+    yfftn = fft(-y(1+lag:N+lag));
+    slagn = signal_lag(3/f/5,1/f,f,arg(yfftn(idx0)));
+    zn    = X_f(slag,3/f/5,1/f,2*f);
+    printf("-S(t) f=%d lag=%f idf=%d idx2f=%d arg(X(f))=%f arg(X(2f))=%f *--* sig_lag=%f arg(X(2*f))=%f\n",
+            f,lag/Fe,idx0,idx1,arg(yfftn(idx0)),arg(yfftn(idx1)),slagn,arg(zn));
+  endfor    
 endfor
 
 
