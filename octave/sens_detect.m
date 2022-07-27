@@ -59,19 +59,16 @@ TF{x(t-a,T,T1)}(f) = A*T1*exp(-i*2*pi*a*f) *
       z1= exp(-i*pi*T1*f)*sinc(T1*f)
       z2= exp(-i*pi*(T+T1)*f)*sinc((T-T1)*f)
 %}                      
-function a=signal_lag(T1,T,f,arg_fft)
+function [a,phi]=signal_lag(T1,T,f,arg_fft)
   z1=exp(-i*pi*T1*f)*sinc(T1*f);
   z2=exp(-i*pi*(T+T1)*f)*sinc((T-T1)*f);
-  argz1z2=arg(z1-z2);
-  if(argz1z2<0) argz1z2 += 2*pi; endif
-  argfft=arg_fft;
-  if( argfft<0) argfft +=2*pi; endif 
-  a = mod(argz1z2-argfft,2*pi)*1/(2*pi*f);
-  %a=(arg(z1-z2)-arg_fft)*1/(2*pi*f); 
-  % -pi < arg(z) <= +pi on veut 0 <= arg(z) < 2*pi
-  if(a<0) 
-    a = a+T;
-  endif  
+  
+  phi= (arg(z1-z2)-arg_fft);
+  if(phi<0)
+    a  = -phi*1/(2*pi*f); 
+  else
+    a  = (2*pi-phi)/(2*pi*f);
+  endif
 endfunction
 
 % analytic expr of X(f)
@@ -156,17 +153,17 @@ for f=Freqs
     yfft = fft(y(1+lag:N+lag));
     idx0 = Freq2FftIndex(f,dF,N);
     idx1 = Freq2FftIndex(2*f,dF,N);
-    slag = signal_lag(3/f/5,1/f,f,arg(yfft(idx0)));
+    [slag,phi] = signal_lag(3/f/5,1/f,f,arg(yfft(idx0)));
     z    = X_f(slag,3/f/5,1/f,2*f);
-    printf(" S(t) f=%d lag=%f idf=%d idx2f=%d arg(X(f))=%f arg(X(2f))=%f *--* sig_lag=%f arg(X(2*f))=%f\n",
-            f,lag/Fe,idx0,idx1,arg(yfft(idx0)),arg(yfft(idx1)),slag,arg(z));
+    printf(" S(t) f=%d lag=%f idf=%d idx2f=%d arg(X(f))=%f arg(X(2f))=%f *--* sig_lag=%f phi=%f arg(X(2*f))=%f\n",
+            f,lag/Fe,idx0,idx1,arg(yfft(idx0)),arg(yfft(idx1)),slag,phi,arg(z));
     
     % -s(t-a)
     yfftn = fft(-y(1+lag:N+lag));
-    slagn = signal_lag(3/f/5,1/f,f,arg(yfftn(idx0)));
+    [slagn,phin] = signal_lag(3/f/5,1/f,f,arg(yfftn(idx0)));
     zn    = X_f(slag,3/f/5,1/f,2*f);
-    printf("-S(t) f=%d lag=%f idf=%d idx2f=%d arg(X(f))=%f arg(X(2f))=%f *--* sig_lag=%f arg(X(2*f))=%f\n",
-            f,lag/Fe,idx0,idx1,arg(yfftn(idx0)),arg(yfftn(idx1)),slagn,arg(zn));
+    printf("-S(t) f=%d lag=%f idf=%d idx2f=%d arg(X(f))=%f arg(X(2f))=%f *--* sig_lag=%f phi=%f arg(X(2*f))=%f\n",
+            f,lag/Fe,idx0,idx1,arg(yfftn(idx0)),arg(yfftn(idx1)),slagn,phin,arg(zn));
   endfor    
 endfor
 
