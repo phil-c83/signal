@@ -1,6 +1,6 @@
 pkg load signal
 clear all;
-%close all;
+close all;
 %graphics_toolkit("qt"); set in .octaverc
 %{
 forme du signal à synthétiser ie créneau sans symetrie
@@ -17,7 +17,10 @@ TF{x(t-a,T,T1)}(f) = A*T1*exp(-i*2*pi*a*f) *
                       exp(-i*pi*(T-T1)*f)*sinc(pi*(T-T1)*f)}
 %}
 
-Freqs=[410,440,470,520,560,590,610,640,670,710,740,770];
+global Freqs=[410,440,470;
+              520,560,590;
+              610,640,670;
+              710,740,770]';
 nT  = 0.1;
 N   = 1024;
 Te = nT/N;
@@ -40,15 +43,20 @@ function [nTe,y]=zero_mean_rect(A,Fe,T1,T)
 endfunction
 
 % A*(rect((t-T1/2)/T1)-T1/(T-T1)*rect((t-(T+T1)/2)/(T-T1)))
-function [nTe,y]=zero_mean_rect_train(A,Fe,T1,T,nT)
-  nTe = ((0:1/Fe:nT-1/Fe))';
-  %delay and amplitude of each signal period
+function y=zero_mean_rect_train(A,Fe,nTe,T1,T,nT)  
+    %delay and amplitude of each signal period
   dT  = ((0:T:nT-T))';
   d1  = [dT+T1/2,A*ones(floor(nT/T),1)];
   d2  = [dT+(T+T1)/2,(A*T1)/(T-T1)*ones(floor(nT/T),1)];
   y   =  pulstran(nTe,d1,"rectpuls",T1) - pulstran(nTe,d2,"rectpuls",T-T1);
 endfunction
 
+function [nTe,y]=signal_jupiter(A,Fe,f1,f2,nT)
+  nTe = ((0:1/Fe:nT-1/Fe))';
+  s_p = zero_mean_rect_train(A,Fe,nTe,2/f1/5,1/f1,nT) ;
+  s_n = zero_mean_rect_train(A,Fe,nTe,2/f2/5,1/f2,nT) ;
+  y   = s_p - s_n;  
+endfunction
 % analytic expr of X(f)=TF{rect((t-T1/2)/T1)-T1/(T-T1)*rect((t-(T+T1)/2)/(T-T1))}
 function z=X_f(a,T1,T,f)
   z = exp(-i*2*pi*a*f) .* (
@@ -84,17 +92,15 @@ function plot_fft_signal(nTe,y,yfft)
   N = length(nTe);
   Fe = 1/(nTe(2)-nTe(1));
   dF = Fe/N;
-  ndF = -Fe/2:dF:Fe/2-dF;
-  yffts = fftshift(yfft);
+  ndF =(0:N/2-1)*dF;
+  
   figure;
   subplot(3,1,1);
   plot(nTe,y,"--.k;sig;");
   subplot(3,1,2);
-  plot(ndF,abs(yffts)/N,"--.b;mods;");
+  plot(ndF,abs(yfft(1:N/2))/N,"--.b;mods;");
   subplot(3,1,3);
-  plot(ndF,arg(yffts)*180/pi,"--.g;args;");  
-  figure;
-  plot3(ndF,yffts);  
+  plot(ndF,arg(yfft(1:N/2)),"--.g;args;");    
 endfunction  
 
 function q=quadran(z)
@@ -145,19 +151,28 @@ endfunction
 
 % compare fft with Ft @ discrete frequencies for jupiter signal
 function fft_and_dft(lag,A,Fe,N,T1,T,nT)
+  global Freqs;
   df=Fe/N;
   ndf=(0:N/2-1)*df;
   % DFT with FT with Fe/N step  
   dft=X_f(-lag,T1,T,ndf);
   
-  [nTe,y]=zero_mean_rect_train(A,Fe,T1,T,2*nT);  
-  yfft = fft(y(1+round(lag*Fe):N+round(lag*Fe)));
+  %[nTe,y]=zero_mean_rect_train(A,Fe,T1,T,2*nT);  
+  [nTe,y]=signal_jupiter(A,Fe,Freqs(1,1),Freqs(2,1),2*nT);
   
+  range=1+round(lag*Fe):N+round(lag*Fe);
+  yfft = fft(y(range));
+  
+  plot_fft_signal(nTe(range),y(range),yfft);
+  %{
   figure;
-  subplot(2,1,1);
+  subplot(3,1,1);
+  plot(nTe(range),y(range));
+  subplot(3,1,2);
   plot(ndf,abs(dft),"--.k;DFT;",ndf,abs(2*yfft(1:512)/N),"--.b;FFT;");
-  subplot(2,1,2);
+  subplot(3,1,3);
   plot(ndf,arg(dft),"--.k;DFT;",ndf,arg(2*yfft(1:512)/N),"--.b;FFT;");
+  %}
   
   printf("fft(f)=%s X(f)=%s fft(2f)=%s  X(2f)=%s\n",
             num2str(2*yfft(Freq2FftIndex(1/T,df,N))/N),
@@ -169,7 +184,6 @@ function fft_and_dft(lag,A,Fe,N,T1,T,nT)
             arg(dft(1/T/10+1)),
             arg(yfft(Freq2FftIndex(2/T,df,N))),
             arg(dft(2/T/10+1)));    
-  
 endfunction
 
 fft_and_dft(0,1,Fe,N,2/410/5,1/410,nT);

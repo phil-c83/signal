@@ -40,13 +40,21 @@ function [a,phi]=signal_lag(T1,T,f,arg_fft)
   endif
 endfunction
 
+% analytic expr of X(f)=TF{rect((t-T1/2)/T1)-T1/(T-T1)*rect((t-(T+T1)/2)/(T-T1))}
+function z=X_f(a,T1,T,f)
+  z = exp(-i*2*pi*a*f) .* (
+      exp(-i*pi*T1*f) .* sinc(T1*f) - 
+      exp(-i*pi*(T+T1)*f) .* sinc((T-T1)*f) );  
+endfunction 
+
 function [s,a,argf,arg2f,arg2f_c]=sens_eval(fft,f,df,N,T,T1,tol)
   argf  = arg(fft(Freq2FftIndex(f,df,N)));  % arg(TF{s(t-a)}(f)) mesuré
   arg2f = arg(fft(Freq2FftIndex(2*f,df,N)));% arg(TF{s(t-a)}(2*f)) mesuré
   % calcul du retard 'a' de s(t-a)
   [a,phi]=signal_lag(T1,T,f,argf);
   % calcul arg(TF{s(t-a)}(2*f)) avec 'a'
-  arg2f_c = arg(exp(-i*2*pi*f*a)) + arg(exp(-i*pi*f*T1)*sinc(T1*f) - exp(-i*pi*(T+T1)*f)*sinc((T-T1)*f));
+  z = X_f(a,T1,T,2/T);
+  arg2f_c = arg(z);
   % comparaison avec tolerance ...
   if (abs(arg2f - arg2f_c) < tol)
     s=1; % sens direct
@@ -55,35 +63,38 @@ function [s,a,argf,arg2f,arg2f_c]=sens_eval(fft,f,df,N,T,T1,tol)
   endif  
 endfunction
 
-function plot_fft_signal(nTe,y,yfft)
+function plot_signal_and_fft(nTe,y,yfft,FMAX)
   N = length(nTe);
   Fe = 1/(nTe(2)-nTe(1));
   dF = Fe/N;
-  ndF = -Fe/2:dF:Fe/2-dF;
-  yffts = fftshift(yfft);
+  idx_max=round(FMAX/dF);
+  idx=(0:idx_max);
+  ndF = idx*dF;
+  %yffts = fftshift(yfft);
   figure;
   subplot(3,1,1);
-  plot(nTe,y,"--.k;sig;");
+  plot(nTe,y,"--pk;sig;");
   subplot(3,1,2);
-  plot(ndF,abs(yffts)/N,"--.b;mods;");
+  plot(ndF,2*abs(yfft(idx+1))/N,"--pb;mods;");
   subplot(3,1,3);
-  plot(ndF,arg(yffts)*180/pi,"--.g;args;");  
-  figure;
-  plot3(ndF,yffts);  
+  plot(ndF,arg(yfft(idx+1)),"--pg;args;");  
+  %figure;
+  %plot3(ndF,yffts);  
 endfunction  
 
 m1=dlmread("../data/L1.csv",",",0,0);
 dt_csv=m1(2,1)-m1(1,1);% ie 1/Fe=1us pour ces enregistrements
 printf("dt_csv=%f\n",dt_csv);
-figure;
+%figure;
 %plot(m1(:,1),m1(:,2),"--.b;L1;");
 idx0=find(m1(:,1)==0.2); % on se place ds le signal a t=0.2s
 % 1 point sur 100 a partir de t=0.2s pendant 0.1s 1/Fe=10us N=1000
 idx=(0:999)*100+idx0; 
 s1=m1(idx,:);
-plot(s1(:,1),s1(:,2));
+%plot(s1(:,1),s1(:,2));
 ffts1=fft(s1(:,2));
-%plot_fft_signal(s1(:,1),s1(:,2),ffts1);
+plot_signal_and_fft(s1(:,1),s1(:,2),ffts1,1000);
+
 
 % index du fondamental et 1er harmonique pour chaque jeu de signaux
 S1_H0_idx=Freq2FftIndex(S1_f,10,1000);
@@ -114,10 +125,10 @@ p_S4=sum(p_S4_H);
 
 %
 [s,a,argf,arg2f,arg2f_c]=sens_eval(ffts1,410,10,1000,1/410,2/410/5,0.1);
-printf("sens=%d,a=%f,argf=%f,arg2f=%f,arg2f_c=%f\n",s,a,argf,arg2f,arg2f_c);
+printf("sens=%d,T=%f a=%f,argf=%+f,arg2f=%+f,arg2f_c=%+f\n",s,1/410,a,argf,arg2f,arg2f_c);
 
 [s,a,argf,arg2f,arg2f_c]=sens_eval(-ffts1,410,10,1000,1/410,2/410/5,0.1);
-printf("sens=%d,a=%f,argf=%f,arg2f=%f,arg2f_c=%f\n",s,a,argf,arg2f,arg2f_c);
+printf("sens=%d,T=%f a=%f,argf=%+f,arg2f=%+f,arg2f_c=%+f\n",s,1/410,a,argf,arg2f,arg2f_c);
 
 %{
 m2=dlmread("../data/L2.csv",",",0,0);
