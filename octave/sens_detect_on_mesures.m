@@ -25,24 +25,33 @@ TF{x(t-a,T,T1)}(f) = A*T1*exp(-i*2*pi*a*f) *
                      {exp(-i*pi*T1*f)*sinc(T1*f) - 
                       exp(-i*pi*(T+T1)*f)*sinc((T-T1)*f)}
   --> -a = {arg(TF{x(t-a,T,T1)}(f)) - arg(z1-z2)} * 1/(2*pi*f)
+       a = {arg(z1-z2) - arg(TF{x(t-a,T,T1)}(f))} * 1/(2*pi*f)
       z1= exp(-i*pi*T1*f)*sinc(T1*f)
       z2= exp(-i*pi*(T+T1)*f)*sinc((T-T1)*f)
 %}                      
 function [a,phi]=signal_lag(T1,T,f,arg_fft)
-  z1=exp(-i*pi*T1*f)*sinc(T1*f);
-  z2=exp(-i*pi*(T+T1)*f)*sinc((T-T1)*f);
+  z1 = exp(-i*pi*T1*f)*sinc(T1*f);
+  z2 = exp(-i*pi*(T+T1)*f)*sinc((T-T1)*f);
   
-  phi= (arg(z1-z2)-arg_fft);
+  phi = arg(z1-z2)-arg_fft;
+  %{
   if(phi<0)
-    a  = -phi*1/(2*pi*f); 
+    a  = -phi*1/(2*pi*f);     
   else
     a  = (2*pi-phi)/(2*pi*f);
   endif
+  %}
+  
+  a = phi/(2*pi*f)+T1;
+  if(a<0)
+      a = T+a;
+  endif    
+  
 endfunction
 
 % analytic expr of X(f)=TF{rect((t-T1/2)/T1)-T1/(T-T1)*rect((t-(T+T1)/2)/(T-T1))}
 function z=X_f(a,T1,T,f)
-  z = exp(-i*2*pi*a*f) .* (
+  z = exp(-i*2*pi*(a-T1)*f) .* (
       exp(-i*pi*T1*f) .* sinc(T1*f) - 
       exp(-i*pi*(T+T1)*f) .* sinc((T-T1)*f) );  
 endfunction 

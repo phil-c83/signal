@@ -37,13 +37,38 @@ function idx=Freq2FftIndex(f,df,N)
   endif
 endfunction  
 
+
+% coefficients de la série de fourier
+% A*(rect((t-T1/2)/T1)-T1/(T-T1)*rect((t-(T+T1)/2)/(T-T1)))
+function an=an_coef(A,T1,T,n)
+  an=sin(2*pi*n*T1/T)*A/(pi*n)*(T/(T-T1));
+endfunction
+
+function bn=bn_coef(A,T1,T,n)
+  bn=-(cos(2*pi*n*T1/T)-1)*A/(pi*n)*(T/(T-T1));
+endfunction 
+%{
+fonction de synthèse du signal
+A    : amplitude
+T1   : Partie positive ie T-T1 partie négative
+T    : Periode
+nTe  : vecteur temps
+nmax : Nombre max d'harmoniques
+%}
+function s=synth(A,T1,T,nTe,nmax)  
+  s = zeros(length(nTe),1);
+  for k=1:nmax
+    s += an_coef(A,T1,T,k)*cos(2*pi*k*nTe/T) + bn_coef(A,T1,T,k)*sin(2*pi*k*nTe/T);
+  endfor    
+endfunction
+
 function [nTe,y]=zero_mean_rect(A,Fe,T1,T)
   nTe = 0:1/Fe:T-1/Fe;
   y = A*rectpuls(nTe-T1/2,T1) - T1/(T-T1)*A*rectpuls(nTe-(T1+(T-T1)/2),T-T1);
 endfunction
 
 % A*(rect((t-T1/2)/T1)-T1/(T-T1)*rect((t-(T+T1)/2)/(T-T1)))
-function y=zero_mean_rect_train(A,Fe,nTe,T1,T,nT)  
+function y=zero_mean_rect_train(A,nTe,T1,T,nT)  
     %delay and amplitude of each signal period
   dT  = ((0:T:nT-T))';
   d1  = [dT+T1/2,A*ones(floor(nT/T),1)];
@@ -51,12 +76,25 @@ function y=zero_mean_rect_train(A,Fe,nTe,T1,T,nT)
   y   =  pulstran(nTe,d1,"rectpuls",T1) - pulstran(nTe,d2,"rectpuls",T-T1);
 endfunction
 
-function [nTe,y]=signal_jupiter(A,Fe,f1,f2,nT)
-  nTe = ((0:1/Fe:nT-1/Fe))';
+function [nTe,y]=signal_rect_jupiter(A,Fe,f1,f2,nT)
+  nTe = (0:1/Fe:nT-1/Fe)';
   s_p = zero_mean_rect_train(A,Fe,nTe,2/f1/5,1/f1,nT) ;
   s_n = zero_mean_rect_train(A,Fe,nTe,2/f2/5,1/f2,nT) ;
   y   = s_p - s_n;  
 endfunction
+
+function [nTe,y]=signal_jupiter(A,Fe,f1,f2,nT)
+  nTe = (0:1/Fe:nT-1/Fe)';
+  s1  = synth(1/2,2/f1/5,1/f1,nTe,2);
+  s2  = synth(1/2,2/f2/5,1/f2,nTe,2); 
+  y   = s1-s2;  
+endfunction
+
+
+
+
+
+
 % analytic expr of X(f)=TF{rect((t-T1/2)/T1)-T1/(T-T1)*rect((t-(T+T1)/2)/(T-T1))}
 function z=X_f(a,T1,T,f)
   z = exp(-i*2*pi*a*f) .* (
@@ -158,6 +196,8 @@ function fft_and_dft(lag,A,Fe,N,T1,T,nT)
   dft=X_f(-lag,T1,T,ndf);
   
   %[nTe,y]=zero_mean_rect_train(A,Fe,T1,T,2*nT);  
+  %[nTe,y]=signal_jupiter(A,Fe,Freqs(1,1),Freqs(2,1),2*nT);
+  
   [nTe,y]=signal_jupiter(A,Fe,Freqs(1,1),Freqs(2,1),2*nT);
   
   range=1+round(lag*Fe):N+round(lag*Fe);
@@ -179,7 +219,7 @@ function fft_and_dft(lag,A,Fe,N,T1,T,nT)
             num2str(dft(1/T/10+1)),
             num2str(2*yfft(Freq2FftIndex(2/T,df,N))/N),
             num2str(dft(2/T/10+1)));
-  printf("Arg(fft(f))=%+3.2f Arg(X(f))=%+3.2f Arg(fft(2f))=%+3.2f  X(2f)=%+3.2f\n",
+  printf("Arg(fft(f))=%+3.2f Arg(X(f))=%+3.2f Arg(fft(2f))=%+3.2f  Arg(X(2f))=%+3.2f\n",
             arg(yfft(Freq2FftIndex(1/T,df,N))),
             arg(dft(1/T/10+1)),
             arg(yfft(Freq2FftIndex(2/T,df,N))),
@@ -187,8 +227,8 @@ function fft_and_dft(lag,A,Fe,N,T1,T,nT)
 endfunction
 
 fft_and_dft(0,1,Fe,N,2/410/5,1/410,nT);
-fft_and_dft(1/Fe,1,Fe,N,2/410/5,1/410,nT);
-fft_and_dft(10/Fe,1,Fe,N,2/410/5,1/410,nT);
+fft_and_dft(5/Fe,1,Fe,N,2/410/5,1/410,nT);
+fft_and_dft(20/Fe,1,Fe,N,2/410/5,1/410,nT);
 
 
 %{
