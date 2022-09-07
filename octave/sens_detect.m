@@ -104,13 +104,13 @@ endfunction
 
 %{
 x(t) = A*(rect((t-T1/2)/T1) - T1/(T-T1)*rect((t-(T1+T)/2)/(T-T1))
-sinc=sin(pi*x)/(pi*x)
+sinc(x)=sin(pi*x)/(pi*x)
 TF{x(t-a,T,T1)}(f) = A*T1*exp(-i*2*pi*a*f) * 
                      {exp(-i*pi*T1*f)*sinc(T1*f) - 
                       exp(-i*pi*(T+T1)*f)*sinc((T-T1)*f)}
   --> -a = {arg(TF{x(t-a,T,T1)}(f)) - arg(z1-z2)} * 1/(2*pi*f)
-      z1= exp(-i*pi*T1*f)*sinc(T1*f)
-      z2= exp(-i*pi*(T+T1)*f)*sinc((T-T1)*f)
+      z1 = exp(-i*pi*T1*f)*sinc(T1*f)
+      z2 = exp(-i*pi*(T+T1)*f)*sinc((T-T1)*f)
 %}                      
 function [a,phi]=signal_lag(T1,T,f,arg_fft)
   z1=exp(-i*pi*T1*f)*sinc(T1*f);
@@ -118,10 +118,17 @@ function [a,phi]=signal_lag(T1,T,f,arg_fft)
   
   phi= (arg(z1-z2)-arg_fft);
   if(phi<0)
+    a  = (2*pi+phi)/(2*pi*f);     
+  else
+    a  = phi/(2*pi*f);
+  endif
+  %{
+  if(phi<0)
     a  = -phi*1/(2*pi*f); 
   else
     a  = (2*pi-phi)/(2*pi*f);
   endif
+  %}
 endfunction
 
 
