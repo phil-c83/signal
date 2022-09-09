@@ -102,36 +102,17 @@ function z=X_f(a,T1,T,f)
       exp(-i*pi*(T+T1)*f) .* sinc((T-T1)*f) );  
 endfunction  
 
-%{
-x(t) = A*(rect((t-T1/2)/T1) - T1/(T-T1)*rect((t-(T1+T)/2)/(T-T1))
-sinc(x)=sin(pi*x)/(pi*x)
-TF{x(t-a,T,T1)}(f) = A*T1*exp(-i*2*pi*a*f) * 
-                     {exp(-i*pi*T1*f)*sinc(T1*f) - 
-                      exp(-i*pi*(T+T1)*f)*sinc((T-T1)*f)}
-  --> -a = {arg(TF{x(t-a,T,T1)}(f)) - arg(z1-z2)} * 1/(2*pi*f)
-      z1 = exp(-i*pi*T1*f)*sinc(T1*f)
-      z2 = exp(-i*pi*(T+T1)*f)*sinc((T-T1)*f)
-%}                      
-function [a,phi]=signal_lag(T1,T,f,arg_fft)
-  z1=exp(-i*pi*T1*f)*sinc(T1*f);
-  z2=exp(-i*pi*(T+T1)*f)*sinc((T-T1)*f);
+function [a,phi]=signal_lag(Xf,T1,T,f,arg_fft) 
+    
+  phi = arg(Xf(0,T1,T,f))-arg_fft;  
   
-  phi= (arg(z1-z2)-arg_fft);
   if(phi<0)
     a  = (2*pi+phi)/(2*pi*f);     
   else
     a  = phi/(2*pi*f);
-  endif
-  %{
-  if(phi<0)
-    a  = -phi*1/(2*pi*f); 
-  else
-    a  = (2*pi-phi)/(2*pi*f);
-  endif
-  %}
+  endif   
+  
 endfunction
-
-
 
 function plot_fft_signal(nTe,y,yfft)
   N = length(nTe);
@@ -165,35 +146,6 @@ function q=quadran(z)
   endif
 endfunction
 
-function s=sens_det(y)
-  iy=find(y>=0);
-  if( length(iy) > length(y)-length(iy) )
-    s=1;
-  else
-    s=0;
-  endif  
-endfunction
-
-function signal_harmonic_properties(nTe,y,yfft,f,k,lag,str)
-  N = length(nTe);
-  Fe = 1/(nTe(2)-nTe(1));
-  dF = Fe/N;
-  % index of f
-  idx0 = Freq2FftIndex(f,dF,N);  
-  printf("%s lag=%2d f=%3.0f abs(f)=% 2.2f arg(f)=%+ 3.2f ",
-         str,lag,f,abs(yfft(idx0))/N,
-         arg(yfft(idx0))*180/pi);
-  % phase diff between i*f and f 
-  for i=2:k
-    idx = Freq2FftIndex(i*f,dF,N);    
-    printf("abs(%df)=%02.2f arg(%df)=%+03.2f arg(%df)-arg(f)=%+ 3.2f ",
-           i,abs(yfft(idx))/N,i,arg(yfft(idx))*180/pi,
-           i,arg(yfft(idx)/yfft(idx0))*180/pi);
-  endfor
-  printf("\n");
-  %printf("sens=%d\n",sens_detect(y));
-endfunction  
-
 % compare fft with Ft @ discrete frequencies for jupiter signal
 function fft_and_dft(lag,A,Fe,N,T1,T,nT)
   global Freqs;
@@ -211,15 +163,7 @@ function fft_and_dft(lag,A,Fe,N,T1,T,nT)
   yfft = fft(y(range));
   
   plot_fft_signal(nTe(range),y(range),yfft);
-  %{
-  figure;
-  subplot(3,1,1);
-  plot(nTe(range),y(range));
-  subplot(3,1,2);
-  plot(ndf,abs(dft),"--.k;DFT;",ndf,abs(2*yfft(1:512)/N),"--.b;FFT;");
-  subplot(3,1,3);
-  plot(ndf,arg(dft),"--.k;DFT;",ndf,arg(2*yfft(1:512)/N),"--.b;FFT;");
-  %}
+  
   
   printf("fft(f)=%s X(f)=%s fft(2f)=%s  X(2f)=%s\n",
             num2str(2*yfft(Freq2FftIndex(1/T,df,N))/N),

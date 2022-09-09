@@ -36,15 +36,7 @@ endfunction
                       
 function [a,phi]=signal_lag(Xf,T1,T,f,arg_fft) 
     
-  phi = arg(Xf(0,T1,T,f))-arg_fft;
-  
-  %{
-  if(phi<0)
-    a  = -phi*1/(2*pi*f);     
-  else
-    a  = (2*pi-phi)/(2*pi*f);
-  endif 
-  %}
+  phi = arg(Xf(0,T1,T,f))-arg_fft;  
   
   if(phi<0)
     a  = (2*pi+phi)/(2*pi*f);     
@@ -103,15 +95,20 @@ function plot_signal_and_fft(nTe,y,yfft,FMAX)
   %plot3(ndF,yffts);  
 endfunction  
 
+% read file tecktronic dpo3000 series saved files 
+function m=read_dpo3000_file(file,sep,row_n,col_n)
+  m=dlmread(file,sep,row_n,col_n);  
+endfunction
+
 % read file tecktronic tds2000 series saved files 
 function m=read_tds200x_file(file,sep,row_n,col_n)
   m=dlmread(file,sep,row_n,col_n);
 endfunction
 
-function s=get_tds200x_file(file)
-  m1 = read_tds200x_file(file,",",0,3);
+function s=get_dpo3000_file(file)
+  m1 = read_dpo3000_file(file,",",0,0);
   dt_csv = m1(2,1)-m1(1,1);
-  step = round(dt_csv/1e-4);% Te=100us  
+  step = round(1e-4/dt_csv);% Te=100us  
   printf("dt_csv=%f\n",dt_csv);
   n1 = length(m1);
   n  = round(n1/step);
@@ -119,30 +116,61 @@ function s=get_tds200x_file(file)
   s  = m1(idx,:);  
 endfunction
 
-function analyse_signal(s,offset)
+function s=get_tds200x_file(file)
+  m1 = read_tds200x_file(file,",",0,3);
+  dt_csv = m1(2,1)-m1(1,1);
+  step = round(1e-4/dt_csv);% Te=100us  
+  printf("dt_csv=%f\n",dt_csv);
+  n1 = length(m1);
+  n  = round(n1/step);
+  idx= (1:n)*step;
+  s  = m1(idx,:);  
+endfunction
+
+function analyse_signal(s,f,offset,plot)
   range=offset:1000+offset;
   ffts=fft(s(range,2));
-  plot_signal_and_fft(s(range,1),s(range,2),ffts,1000);
+  if(plot)
+    plot_signal_and_fft(s(range,1),s(range,2),ffts,1000);
+  endif  
 
-  [s,a,phi,argf,arg2f,arg2f_c]=sens_eval(@X_f,ffts,410,10,1000,1/410,2/410/5,0.1);
-  printf("sens=%d,T=%f a=%f,argf=%+3.2f,phi=%+3.2f,arg2f=%+3.2f,arg2f_c=%+3.2f\n",
-          s,1/410,a,argf,phi,arg2f,arg2f_c);  
+  [s,a,phi,argf,arg2f,arg2f_c]=sens_eval(@X_f,ffts,f,10,1000,1/f,2/f/5,0.15);
+  df = arg2f-argf;
+  if(df>pi) %  -pi < df <= pi
+    df = df-2*pi;
+  elseif(df<-pi)
+    df = 2*pi+df;  
+  endif
+  printf("sens=%+d,T=%f,phi=%+3.2f,a=%f,argf=%+3.2f,arg2f=%+3.2f,arg2f_c=%+3.2f df=%+3.2f,d2f=%3.2f\n",
+          s,1/f,phi,a,argf,arg2f,arg2f_c,df,abs(arg2f-arg2f_c));  
 endfunction  
 
+
+%{
 s=get_tds200x_file("../data/F0000L1.CSV");
-analyse_signal(s,1);
-analyse_signal(s,200);
-analyse_signal(s,500);
+analyse_signal(s,410,1,0);
+analyse_signal(s,440,1,0);
+analyse_signal(s,410,200,0);
+analyse_signal(s,410,500,0);
 
 
-s=get_tds200x_file("../data/F0001L1.CSV");
-analyse_signal(s,1);
-analyse_signal(s,200);
-analyse_signal(s,500);
+s=get_tds200x_file("../data/F0000L2.CSV");
+analyse_signal(s,440,1,0);
+analyse_signal(s,470,1,0);
+analyse_signal(s,440,200,0);
+analyse_signal(s,440,500,0);
 
+s=get_tds200x_file("../data/F0000L3.CSV");
+analyse_signal(s,470,1,0);
+analyse_signal(s,410,1,0);
+analyse_signal(s,470,200,0);
+analyse_signal(s,470,500,0);
+%}
 
-
-
+s=get_dpo3000_file("../data/L1.csv");
+analyse_signal(s,410,3000,1);
+analyse_signal(s,410,3500,1);
+analyse_signal(s,410,4000,1);
 
 
 
