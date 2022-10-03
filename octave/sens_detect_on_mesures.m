@@ -2,19 +2,14 @@ pkg load signal
 clear all;
 close all;
 
-S1_f=[410,440,470]';
-S2_f=[520,560,590]';
-S3_f=[610,640,670]';
-S4_f=[710,740,770]';
+SigSetFreqs=[410 440 470;520 560 590;610 640 670;710 740 770]';
 
 function idx=Freq2FftIndex(f,df,N)
-  k = round(abs(f/df));
-  if ( f>0 )
+  k = round(abs(f ./ df));
+  if ( f>=0 )
     idx = k+1;
-  elseif ( f<0 )
-    idx = N-k+1;
-  else
-    idx = 1;
+  else % f<0 
+    idx = N-k+1;  
   endif
 endfunction
 
@@ -33,18 +28,22 @@ function z=X_f(a,T1,T,f)
       exp(-i*pi*T1*f) .* sinc(T1*f) - 
       exp(-i*pi*(T+T1)*f) .* sinc((T-T1)*f) );  
 endfunction 
-                      
-function [a,phi]=signal_lag(Xf,T1,T,f,arg_fft) 
-    
-  phi = arg(Xf(0,T1,T,f))-arg_fft;  
-  
+   
+% return lag a,  0 <= a <= 1/f   
+function a=Phi2Lag(phi,f)
   if(phi<0)
-    a  = (2*pi+phi)/(2*pi*f);     
+    a  = (2*pi+phi) ./ (2*pi*f);     
   else
-    a  = phi/(2*pi*f);
+    a  = phi ./ (2*pi*f);
   endif   
-  
+endfunction 
+     
+% phi,a for direct signal    
+function [a,phi]=signal_lag(Xf,T1,T,f,arg_fft)     
+  phi = arg(Xf(0,T1,T,f))-arg_fft;    
+  a   = Phi2Lag(phi,f);  
 endfunction
+
 %{ 
    TF{x(t+T1)}(f) =  exp(i*2*pi*f*T1) * TF{x(t)}(f)
    TF{x(t+T1)}(f) <->  exp(i*pi*T1*f)*sinc(T1*f) - 
@@ -60,19 +59,27 @@ function z=Y_f(a,T1,T,f)
 endfunction
 
 
-function [s,a,phi,argf,arg2f,arg2f_c]=sens_eval(Xf,fft,f,df,N,T,T1,tol)
+function [s,e,a,phi,modf,argf,mod2f,arg2f,arg2f_c]=sens_eval(Xf,fft,f,df,N,T,T1,tol)
   argf  = arg(fft(Freq2FftIndex(f,df,N)));  % arg(TF{s(t-a)}(f)) mesuré
   arg2f = arg(fft(Freq2FftIndex(2*f,df,N)));% arg(TF{s(t-a)}(2*f)) mesuré
-  % calcul du retard 'a' de s(t-a)
-  [a,phi]=signal_lag(Xf,T1,T,f,argf);
+  modf  = abs(fft(Freq2FftIndex(f,df,N)))/N;
+  mod2f = abs(fft(Freq2FftIndex(2*f,df,N)))/N;
+  % calcul du retard 'a' de s(t-a)  
+  [a,phi]=signal_lag(Xf,T1,T,f,argf);   
   % calcul arg(TF{s(t-a)}(2*f)) avec 'a'
-  z = Xf(a,T1,T,2/T);
-  arg2f_c = arg(z);
+  z = Xf(a,T1,T,2/T);  
+  arg2f_c = arg(z); % predicted arg for *2f
   % comparaison avec tolerance ...
-  if (abs(arg2f - arg2f_c) < tol)
-    s=1; % sens direct
+  e2f=arg2f - arg2f_c;
+  if( abs(e2f) < tol )
+    s = 1; % sens direct
+    e = abs(e2f);
+  elseif( abs(e2f - pi) < tol )
+    s = -1; % sens inverse 
+    e = abs(e2f - pi);
   else
-    s=-1; % sens inverse 
+    s = 0; % indetermine
+    e = e2f;
   endif  
 endfunction
 
@@ -131,48 +138,59 @@ function analyse_signal(s,f,offset,plot)
   range=offset:1000+offset;
   ffts=fft(s(range,2));
   if(plot)
-    plot_signal_and_fft(s(range,1),s(range,2),ffts,1000);
+    plot_signal_and_fft(s(range,1),s(range,2),ffts,1500);
   endif  
-
-  [s,a,phi,argf,arg2f,arg2f_c]=sens_eval(@X_f,ffts,f,10,1000,1/f,2/f/5,0.15);
-  df = arg2f-argf;
-  if(df>pi) %  -pi < df <= pi
-    df = df-2*pi;
-  elseif(df<-pi)
-    df = 2*pi+df;  
-  endif
-  printf("sens=%+d,T=%f,phi=%+3.2f,a=%f,argf=%+3.2f,arg2f=%+3.2f,arg2f_c=%+3.2f df=%+3.2f,d2f=%3.2f\n",
-          s,1/f,phi,a,argf,arg2f,arg2f_c,df,abs(arg2f-arg2f_c));  
+  %[s,a_d,a_i,phi_d,phi_i,modf,argf,mod2f,arg2f,arg2f_cd,arg2f_ci]=sens_eval(@X_f,ffts,f,10,1000,1/f,2/f/5,0.15);
+  [s,e,a,phi,modf,argf,mod2f,arg2f,arg2f_c]=sens_eval(@X_f,ffts,f,10,1000,1/f,2/f/5,0.15);    
+  printf("sens=%+d,f=%d,T=%f\n",s,f,1/f);
+  printf("\tmodf=%+4.3f,argf=%+3.2f,mod2f=%+3.2f,arg2f=%+3.2f\n",2*modf,argf,2*mod2f,arg2f);
+  printf("\tphi=%+3.2f,a=%f,arg2f_c=%+3.2f,e=%+3.2f\n",  
+          phi,a,arg2f_c,e);  
 endfunction  
 
 
+
 %{
-s=get_tds200x_file("../data/F0000L1.CSV");
-analyse_signal(s,410,1,0);
-analyse_signal(s,440,1,0);
-analyse_signal(s,410,200,0);
-analyse_signal(s,410,500,0);
+compute power,S/B for all frequencies signal index 'idx'
+S/B(f_i) = 2*n*power(f_i)/sum(power(f_k))
+for abs(f_k - f_i) < n*df ,  f_k != f_i
+fft   : signal fft
+idx   : frequency index col vector around which compute S/N
+n     : index span for noise computation
+SN    : col vector S/N  
+Pa    : col vector power for fft(idx)
+%}
+function [Pa,SN]=sig_Pa_SN(fft,idx,n)
+  [rows,cols] = size(idx);  
+  N           = length(fft);
+  for k=1:2*n+1  
+    % index matrix where each row has index 
+    % for 2*n+1 signal frequencies around f_i for S/B computation
+    % idx_SB(i,k) for f_k=f_i+(idx+k-(n+1))*df, abs(f_k - f_i) < n*df 
+    idx_SB(1:rows,k) = idx+k-(n+1);     
+  endfor  
+  for k=1:rows % compute power for all f_k  
+    ix     = idx_SB(k,:)';
+    P      = sig_power(fft,ix,N);        
+    Pnoise = 1/(2*n)*(sum(P(1:n))+sum(P(n+2:2*n+1)));% power noise around f_i
+    SN(k,1)= P(n+1) / Pnoise; % S/B for f_i  
+    Pa(k,1)= P(n+1);
+  endfor    
+endfunction
 
 
-s=get_tds200x_file("../data/F0000L2.CSV");
-analyse_signal(s,440,1,0);
-analyse_signal(s,470,1,0);
-analyse_signal(s,440,200,0);
+  
+endfunction
+s=[1 1 1 2 2 2 3 3 3];
+[Pa,SN]=sig_Pa_SN(s',[2 5 8]',1)
+ 
+%{
+[fname, fpath, fltidx]=uigetfile ("*.CSV");
+s=get_tds200x_file([fpath "/" fname]);
+analyse_signal(s,410,500,1);
 analyse_signal(s,440,500,0);
-
-s=get_tds200x_file("../data/F0000L3.CSV");
-analyse_signal(s,470,1,0);
-analyse_signal(s,410,1,0);
-analyse_signal(s,470,200,0);
 analyse_signal(s,470,500,0);
 %}
-
-s=get_dpo3000_file("../data/L1.csv");
-analyse_signal(s,410,3000,1);
-analyse_signal(s,410,3500,1);
-analyse_signal(s,410,4000,1);
-
-
 
 %{
 m1=dlmread("../data/L1.csv",",",0,0);
@@ -219,20 +237,3 @@ p_S4=sum(p_S4_H);
 %}
 
 
-%{
-[s,a,argf,arg2f,arg2f_c]=sens_eval(@Y_f,ffts1,410,10,1000,1/410,2/410/5,0.1);
-printf("sens=%d,T=%f a=%f,argf=%+f,arg2f=%+f,arg2f_c=%+f\n",s,1/410,a,argf,arg2f,arg2f_c);
-
-[s,a,argf,arg2f,arg2f_c]=sens_eval(@Y_f,-ffts1,410,10,1000,1/410,2/410/5,0.1);
-printf("sens=%d,T=%f a=%f,argf=%+f,arg2f=%+f,arg2f_c=%+f\n",s,1/410,a,argf,arg2f,arg2f_c);
-%}
-
-%{
-m2=dlmread("../data/L2.csv",",",0,0);
-figure;
-plot(m2(:,1),m2(:,2),"--.b;L2;");
-
-m3=dlmread("../data/L3.csv",",",0,0);
-figure;
-plot(m3(:,1),m3(:,2),"--.b;L3;");
-%}
