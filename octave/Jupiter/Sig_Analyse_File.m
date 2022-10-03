@@ -39,6 +39,7 @@ endfunction
 [fname, fpath, fltidx]=uigetfile ("*.CSV");
 % Fe = 10kHz
 s=get_tds200x_file([fpath "/" fname]);
+printf("Analysing %s\n",[fpath "/" fname]);
 range=1:1000;
 FFT=fft(s(range,2));
 SigSetFeatures = Sig_features(s(range,2),FFT,10e3,SigSetFreqs,pi/4,1);

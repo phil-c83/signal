@@ -25,51 +25,68 @@
 function SigSetFeatures = Sig_features(s,FFT,Fe,SigSetFreqs,tol,dbg)
   [nFreqs,nSet] = size(SigSetFreqs); 
   N = length(FFT); 
+  NoiseIdx = 1:N/2;
+  % all frequency signal indexes 
+  SigFreqs = reshape(SigSetFreqs,nFreqs*nSet,1);
+  % all frequency signals with harmonique 1  
+  SigFreqs = [SigFreqs;2*SigFreqs];
+  SigIdx   = Sig_FFT_index(SigFreqs,Fe,N);
+  % all non signal indexes ie noise indexes
+  NoiseIdx = setdiff(NoiseIdx,SigIdx);
   for i=1:nSet
     % index f_i and 2*f_i
-    SigSet = [ SigSetFreqs(:,i);2*SigSetFreqs(:,i) ];
-    SigIdx = Sig_FFT_index(SigSet,Fe,N);
+    FreqSet = [ SigSetFreqs(:,i);2*SigSetFreqs(:,i) ];
+    FreqIdx = Sig_FFT_index(FreqSet,Fe,N);  
     % power and S/N 
-    [Pa,SN]=Sig_Pa_SN(FFT,SigIdx,1);
-    SigSetFeatures(i).Idx   = SigIdx;
-    SigSetFeatures(i).Freqs = SigSet;
-    SigSetFeatures(i).Pa    = Pa;
-    SigSetFeatures(i).SN    = SN;
-    % sort with increasing power
-    [sv,iv] = sort(SigSetFeatures(i).Pa);
-    SigSetFeatures(i).iSort = iv;
-    disp(iv);
+    [Pa,SN]=Sig_Pa_SN(FFT,FreqIdx,1);
+    SigSetFeatures.SigSets(i).Idx    = FreqIdx;
+    SigSetFeatures.SigSets(i).Freqs  = FreqSet;
+    SigSetFeatures.SigSets(i).Pa     = Pa;
+    SigSetFeatures.SigSets(i).FreqSN = SN;
+    % sort with decreasing power (pb with 'ascend')
+    [sv,iv] = sort(SigSetFeatures.SigSets(i).Pa);    
+    SigSetFeatures.SigSets(i).iSort = iv;    
     % seek signals sens
-    T  = 1 ./ SigSetFeatures(i).Freqs(1:nFreqs,1);
+    T  = 1 ./ SigSetFeatures.SigSets(i).Freqs(1:nFreqs,1);
     T1 = 2 * T/5;
-    FFT_arg_f   = arg(FFT(SigIdx(1:nFreqs)));
-    FFT_arg_2f  = arg(FFT(SigIdx(nFreqs+1:end)));
+    FFT_arg_f   = arg(FFT(FreqIdx(1:nFreqs)));
+    FFT_arg_2f  = arg(FFT(FreqIdx(nFreqs+1:end)));
     [sens,gap,lag,phi,CFT_arg_2f]=Sig_sens(FFT_arg_f,FFT_arg_2f,
-                                           SigSetFeatures(i).Freqs(1:nFreqs,1),
+                                           SigSetFeatures.SigSets(i).Freqs(1:nFreqs,1),
                                            Fe,T,T1,tol);                                        
-    SigSetFeatures(i).gap  = gap;
-    SigSetFeatures(i).sens = sens;
-    SigSetFeatures(i).lag  = lag;
-    SigSetFeatures(i).phi  = phi;   
+    SigSetFeatures.SigSets(i).gap  = gap;
+    SigSetFeatures.SigSets(i).sens = sens;
+    SigSetFeatures.SigSets(i).lag  = lag;
+    SigSetFeatures.SigSets(i).phi  = phi;   
   endfor
+  
+  SigSetFeatures.SigPower   = 2/N^2 * sum(FFT(SigIdx) .* conj(FFT(SigIdx)) );
+  SigSetFeatures.NoisePower = 2/N^2 * sum(FFT(NoiseIdx) .* FFT(NoiseIdx));
+  SigSetFeatures.SN         = SigSetFeatures.SigPower / SigSetFeatures.NoisePower;  
+  
   if(dbg)
-      Sig_plot(s,0,FFT,Fe,2000);    
+     Sig_plot(s,0,FFT,Fe,2000);  
+     Sig_print_Sig(SigSetFeatures);
      for i=1:nSet  
-        Sig_print_SigSetFeatures(SigSetFeatures(i));
+        Sig_print_SigSetFeatures(SigSetFeatures.SigSets(i));
      endfor      
   endif
 endfunction
 
-function Sig_print_SigSetFeatures(ssf)  
-  printf("SigSet: %5.0f %5.0f %5.0f %5.0f %5.0f %5.0f\n",ssf.Freqs);
-  printf("SigIdx: %5d %5d %5d %5d %5d %5d\n",ssf.Idx);
-  printf("Power : %5.2f %5.2f %5.2f %5.2f %5.2f %5.2f\n",ssf.Pa);
-  printf("S/N   : %5.2f %5.2f %5.2f %5.2f %5.2f %5.2f\n",ssf.SN);
-  printf("Order : %5d %5d %5d %5d %5d %5d\n",ssf.iSort);
-  printf("Lag   : %5.2f %5.2f %5.2f\n",ssf.lag);
-  printf("Phase : %5.2f %5.2f %5.2f\n",ssf.phi);
-  printf("Gap   : %5.2f %5.2f %5.2f\n",ssf.gap);
-  printf("Sens  : %5d %5d %5d\n\n",ssf.sens);  
+function Sig_print_Sig(sig)
+  printf("SigPower=%7.3f NoisePower=%7.3f SigS/N=%7.3f (%5.2fdB)\n",
+          sig.SigPower,sig.NoisePower,sig.SN,20*log10(sig.SN));  
+endfunction      
+function Sig_print_SigSetFeatures(ssf)    
+  printf("SigSet : %7.1f %7.1f %7.1f %7.1f %7.1f %7.1f\n",ssf.Freqs);
+  printf("FreqIdx: %7d %7d %7d %7d %7d %7d\n",ssf.Idx);
+  printf("Powers : %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f\n",ssf.Pa);
+  printf("FreqSN : %7.2f %7.2f %7.2f %7.2f %7.2f %7.2f\n",ssf.FreqSN);
+  printf("Order  : %7d %7d %7d %7d %7d %7d\n",ssf.iSort);
+  printf("Lag    : %7.5f %7.5f %7.5f\n",ssf.lag);
+  printf("Phase  : %7.2f %7.2f %7.2f\n",ssf.phi);
+  printf("Gap    : %7.2f %7.2f %7.2f\n",ssf.gap);
+  printf("Sens   : %7d %7d %7d\n\n",ssf.sens);  
 endfunction
 % index for a given frequency
 function idx=Sig_FFT_index(f,Fe,N)
@@ -160,7 +177,7 @@ function [sens,gap,lag,phi,CFT_arg_2f]=Sig_sens(FFT_arg_f,FFT_arg_2f,f,Fe,T,T1,t
   % direct sens
   i0 = find(abs(e2f) < tol);
   % reverse sens
-  i1 = find(abs(e2f-pi) < tol);
+  i1 = find(abs(abs(e2f)-pi) < tol);
   sens = zeros(length(f),1);
   sens(i0) = 1;
   sens(i1) = -1;
