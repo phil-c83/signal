@@ -1,29 +1,10 @@
-## Copyright (C) 2022 philippe coste
-##
-## This program is free software: you can redistribute it and/or modify
-## it under the terms of the GNU General Public License as published by
-## the Free Software Foundation, either version 3 of the License, or
-## (at your option) any later version.
-##
-## This program is distributed in the hope that it will be useful,
-## but WITHOUT ANY WARRANTY; without even the implied warranty of
-## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-## GNU General Public License for more details.
-##
-## You should have received a copy of the GNU General Public License
-## along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
-## -*- texinfo -*-
-## @deftypefn {} {@var{retval} =} Sig_features (@var{input1}, @var{input2})
-##
-## @seealso{}
-## @end deftypefn
-
 ## Author: philippe coste <phil@phil-debian-pc>
 ## Created: 2022-09-29
 
 function SigSetFeatures = Sig_features(s,FFT,Fe,SigSetFreqs,tol,dbg)
   [nFreqs,nSet] = size(SigSetFreqs); 
+  SigSetFeatures.nFreqs = nFreqs;
+  SigSetFeatures.nSets  = nSet;
   N = length(FFT); 
   NoiseIdx = 1:N/2;
   % all frequency signal indexes 
@@ -39,13 +20,17 @@ function SigSetFeatures = Sig_features(s,FFT,Fe,SigSetFreqs,tol,dbg)
     FreqIdx = Sig_FFT_index(FreqSet,Fe,N);  
     % power and S/N 
     [Pa,SN]=Sig_Pa_SN(FFT,FreqIdx,1);
-    SigSetFeatures.SigSets(i).Idx    = FreqIdx;
-    SigSetFeatures.SigSets(i).Freqs  = FreqSet;
-    SigSetFeatures.SigSets(i).Pa     = Pa;
-    SigSetFeatures.SigSets(i).FreqSN = SN;
-    % sort with decreasing power (pb with 'ascend')
-    [sv,iv] = sort(SigSetFeatures.SigSets(i).Pa);    
-    SigSetFeatures.SigSets(i).iSort = iv;    
+    SigSetFeatures.SigSets(i).Idx       = FreqIdx;
+    SigSetFeatures.SigSets(i).Freqs     = FreqSet;
+    SigSetFeatures.SigSets(i).FreqPower = Pa;
+    SigSetFeatures.SigSets(i).SetPower  = sum(Pa);
+    SigSetFeatures.SigSets(i).FreqSN    = SN;
+    % sort with increasing power for fondamentals
+    [sv,iv] = sort(SigSetFeatures.SigSets(i).FreqPower(1:nFreqs));     
+    SigSetFeatures.SigSets(i).iSortH0   = iv;
+    % sort with increasing power for harmonics 1
+    [sv,iv] = sort(SigSetFeatures.SigSets(i).FreqPower(nFreqs+1:nFreqs*2));     
+    SigSetFeatures.SigSets(i).iSortH1   = iv+nFreqs;    
     % seek signals sens
     T  = 1 ./ SigSetFeatures.SigSets(i).Freqs(1:nFreqs,1);
     T1 = 2 * T/5;
@@ -54,15 +39,17 @@ function SigSetFeatures = Sig_features(s,FFT,Fe,SigSetFreqs,tol,dbg)
     [sens,gap,lag,phi,CFT_arg_2f]=Sig_sens(FFT_arg_f,FFT_arg_2f,
                                            SigSetFeatures.SigSets(i).Freqs(1:nFreqs,1),
                                            Fe,T,T1,tol);                                        
-    SigSetFeatures.SigSets(i).gap  = gap;
-    SigSetFeatures.SigSets(i).sens = sens;
-    SigSetFeatures.SigSets(i).lag  = lag;
-    SigSetFeatures.SigSets(i).phi  = phi;   
+    SigSetFeatures.SigSets(i).Gap       = gap;
+    SigSetFeatures.SigSets(i).Sens      = sens;
+    SigSetFeatures.SigSets(i).Lag       = lag;
+    SigSetFeatures.SigSets(i).Phi       = phi;   
   endfor
-  
-  SigSetFeatures.SigPower   = 2/N^2 * sum(FFT(SigIdx) .* conj(FFT(SigIdx)) );
-  SigSetFeatures.NoisePower = 2/N^2 * sum(FFT(NoiseIdx) .* FFT(NoiseIdx));
-  SigSetFeatures.SN         = SigSetFeatures.SigPower / SigSetFeatures.NoisePower;  
+  % global signal/noise power and S/N
+  SigSetFeatures.SigPower      = sum(Sig_power(FFT,SigIdx));
+  SigSetFeatures.NoisePower    = sum(Sig_power(FFT,NoiseIdx));
+  SigSetFeatures.SN            = SigSetFeatures.SigPower / SigSetFeatures.NoisePower;  
+  [sp,ip]                      = sort([SigSetFeatures.SigSets(1:nSet).SetPower]);  
+  SigSetFeatures.SetPoweriSort = ip;  
   
   if(dbg)
      Sig_plot(s,0,FFT,Fe,2000);  
@@ -74,20 +61,28 @@ function SigSetFeatures = Sig_features(s,FFT,Fe,SigSetFreqs,tol,dbg)
 endfunction
 
 function Sig_print_Sig(sig)
-  printf("SigPower=%7.3f NoisePower=%7.3f SigS/N=%7.3f (%5.2fdB)\n",
-          sig.SigPower,sig.NoisePower,sig.SN,20*log10(sig.SN));  
+  printf("SigPower : %7.3f NoisePower : %7.3f S/N : %7.3f (%5.2fdB)\n",
+          sig.SigPower,sig.NoisePower,sig.SN,20*log10(sig.SN));           
+  printf("SetPower :%7d %7d %7d %7d\n",sig.SetPoweriSort);
+  printf("nSets    :%7d\n",sig.nSets);
+  printf("nFreq    :%7d\n\n",sig.nFreqs);
+          
 endfunction      
+
 function Sig_print_SigSetFeatures(ssf)    
-  printf("SigSet : %7.1f %7.1f %7.1f %7.1f %7.1f %7.1f\n",ssf.Freqs);
-  printf("FreqIdx: %7d %7d %7d %7d %7d %7d\n",ssf.Idx);
-  printf("Powers : %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f\n",ssf.Pa);
-  printf("FreqSN : %7.2f %7.2f %7.2f %7.2f %7.2f %7.2f\n",ssf.FreqSN);
-  printf("Order  : %7d %7d %7d %7d %7d %7d\n",ssf.iSort);
-  printf("Lag    : %7.5f %7.5f %7.5f\n",ssf.lag);
-  printf("Phase  : %7.2f %7.2f %7.2f\n",ssf.phi);
-  printf("Gap    : %7.2f %7.2f %7.2f\n",ssf.gap);
-  printf("Sens   : %7d %7d %7d\n\n",ssf.sens);  
+  printf("SetFreqs : %7.1f %7.1f %7.1f %7.1f %7.1f %7.1f\n",ssf.Freqs);
+  printf("FreqIdx  : %7d %7d %7d %7d %7d %7d\n",ssf.Idx);
+  printf("Powers   : %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f\n",ssf.FreqPower);
+  printf("FreqSN   : %7.2f %7.2f %7.2f %7.2f %7.2f %7.2f\n",ssf.FreqSN);
+  printf("OrderH0  : %7d %7d %7d\n",ssf.iSortH0);
+  printf("OrderH1  : %7d %7d %7d\n",ssf.iSortH1);
+  printf("Lag      : %7.5f %7.5f %7.5f\n",ssf.Lag);
+  printf("Phase    : %7.2f %7.2f %7.2f\n",ssf.Phi);
+  printf("Gap      : %7.2f %7.2f %7.2f\n",ssf.Gap);
+  printf("Sens     : %7d %7d %7d\n",ssf.Sens); 
+  printf("SetPower : %7.3f\n\n",ssf.SetPower); 
 endfunction
+
 % index for a given frequency
 function idx=Sig_FFT_index(f,Fe,N)
   k = round(abs(N*f ./ Fe));
@@ -162,7 +157,7 @@ endfunction
 % power for FFT(idx)
 function P=Sig_power(FFT,idx)
   N = length(FFT);
-  P = 2/N^2 * (FFT(idx) .* conj(FFT(idx)));    
+  P = 2/N^2 * abs((FFT(idx) .* conj(FFT(idx))));    
 endfunction
 
 
