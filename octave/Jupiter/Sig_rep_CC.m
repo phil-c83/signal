@@ -14,11 +14,15 @@ ret     : struct SigCC array
 %}
 function SigCC = Sig_rep_CC (s,FFT,sf,power_min,max_tol,min_tol)  
     for k = 1:sf.nSets % for all frequencies set
-      SigCC(k).error = 0;
-      cur = sf.SetPoweriSort(sf.nSets-k+1); % process in order of power
       
-       
-      idx_1st = sf.SigSets(cur).iSortH0(sf.nFreqs);
+      cur = sf.SetPoweriSort(sf.nSets-k+1); % process in order of power      
+      
+      SigCC(k).error = 0;
+      SigCC(k).Sets  = cur;
+      SigCC(k).Rp_12 = 0;
+      SigCC(k).Rp_13 = 0;
+      
+      idx_1st = sf.SigSets(cur).iSortH0(sf.nFreqs); % index for max power
       idx_2nd = sf.SigSets(cur).iSortH0(sf.nFreqs-1);
       idx_3rd = sf.SigSets(cur).iSortH0(sf.nFreqs-2);
       
@@ -28,9 +32,19 @@ function SigCC = Sig_rep_CC (s,FFT,sf,power_min,max_tol,min_tol)
         power_2nd = sf.SigSets(cur).FreqPower(idx_2nd);
         power_3rd = sf.SigSets(cur).FreqPower(idx_3rd);
         
-        if( power_2nd > eps && power_3rd > eps && 
-           (power_1st / power_2nd) < max_tol  && 
-           (power_1st / power_3rd) > min_tol ) 
+        % avoid dividing by 0
+        if( power_2nd < eps )
+          power_2nd = eps;
+        endif
+        if( power_3rd < eps )
+          power_3rd = eps;
+        endif
+        
+        SigCC(k).Rp_12 = power_1st / power_2nd;
+        SigCC(k).Rp_13 = power_1st / power_3rd;
+        
+        if( SigCC(k).Rp_12 < max_tol  && 
+            SigCC(k).Rp_13 > min_tol ) 
             
             if( (idx_1st == 1 && idx_2nd == 2) ||
                 (idx_1st == 2 && idx_2nd == 1) ) % index for L1
@@ -83,10 +97,10 @@ function SigCC = Sig_rep_CC (s,FFT,sf,power_min,max_tol,min_tol)
               SigCC(k).error = -3;% unexpected error
             endif            
         else
-            SigCC(k).error = -2; % power ratio fail
+            SigCC(k).error = -2; % power ratio fail            
         endif    
       else
-        SigCC(k).error = -1; % not enough power
+        SigCC(k).error = -1; % not enough power        
       endif    
   endfor
 endfunction

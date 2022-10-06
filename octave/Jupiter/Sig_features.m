@@ -76,9 +76,9 @@ function Sig_print_SigSetFeatures(ssf)
   printf("FreqSN   : %7.2f %7.2f %7.2f %7.2f %7.2f %7.2f\n",ssf.FreqSN);
   printf("OrderH0  : %7d %7d %7d\n",ssf.iSortH0);
   printf("OrderH1  : %7d %7d %7d\n",ssf.iSortH1);
-  printf("Lag      : %7.5f %7.5f %7.5f\n",ssf.Lag);
-  printf("Phase    : %7.2f %7.2f %7.2f\n",ssf.Phi);
-  printf("Gap      : %7.2f %7.2f %7.2f\n",ssf.Gap);
+  printf("PhaseLag : %7.2f %7.2f %7.2f\n",ssf.Phi);
+  printf("TimeLag  : %7.5f %7.5f %7.5f\n",ssf.Lag);  
+  printf("CFTGap   : %7.2f %7.2f %7.2f\n",ssf.Gap);
   printf("Sens     : %7d %7d %7d\n",ssf.Sens); 
   printf("SetPower : %7.3f\n\n",ssf.SetPower); 
 endfunction
@@ -110,13 +110,13 @@ function z=Sig_ref_CFT(a,T1,T,f)
         exp(-i*pi*((T+T1).*f)) .* sinc((T-T1).*f) );  
 endfunction 
 
-% return a, lag for phase shift phi, 0 <= a <= 1/f   
-function a=Sig_Phase2Lag(phi,f)
-  if(phi<0)
-    a  = (2*pi+phi) ./ (2*pi*f);     
-  else
-    a  = phi ./ (2*pi*f);
-  endif   
+% return time lag a (0 <= a <= 1/f) for phase lag phi   
+function a=Sig_Phase2Lag(phi,f)  
+  i_n = find(phi <  0);
+  i_p = find(phi >= 0);
+  a   = zeros(size(f));
+  a(i_n) = (2*pi+phi(i_n)) ./ (2*pi*f(i_n));
+  a(i_p) = phi(i_p) ./ (2*pi*f(i_p));  
 endfunction 
 
 % Phase shift 'phi" and lag 'a' computed from CFT    
@@ -166,17 +166,21 @@ function [sens,gap,lag,phi,CFT_arg_2f]=Sig_sens(FFT_arg_f,FFT_arg_2f,f,Fe,T,T1,t
   [lag,phi] = Sig_lag(T1,T,f,FFT_arg_f);   
   % arg(CFT{s(t-a)}(2*f)) computation with lag 'a'
   z = Sig_ref_CFT(lag,T1,T,2*f);  
-  CFT_arg_2f = arg(z); % predicted arg for 2*f
-  % compare with ...
+  CFT_arg_2f = arg(z); % CFT predicted arg for 2*f
+  % compare with FFT arg :  -2*pi <= e2f <= 2*pi
   e2f = FFT_arg_2f - CFT_arg_2f;
-  % direct sens
-  i0 = find(abs(e2f) < tol);
-  % reverse sens
-  i1 = find(abs(abs(e2f)-pi) < tol);
-  sens = zeros(length(f),1);
-  sens(i0) = 1;
-  sens(i1) = -1;
   gap = e2f;  
+  in  = find(e2f < 0); 
+  e2f(in) += 2*pi; % 0 <= e2f <= 2*pi
+  % direct sens
+  id0 = find(e2f < tol);
+  id1 = find(e2f > 2*pi-tol);
+  % reverse sens
+  ir1 = find(abs(e2f-pi) < tol);  
+  sens = zeros(size(f));
+  sens(id0) = 1;
+  sens(id1) = 1;
+  sens(ir1) = -1;  
 endfunction  
 
 % plot s(t) and abs/arg(FFT(s(t))) s(0)=f(t-T0)
