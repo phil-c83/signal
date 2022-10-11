@@ -19,17 +19,17 @@ function SigSetFeatures = Sig_features(s,FFT,Fe,SigSetFreqs,tol,dbg)
     FreqSet = [ SigSetFreqs(:,i);2*SigSetFreqs(:,i) ];
     FreqIdx = Sig_FFT_index(FreqSet,Fe,N);  
     % power and S/N 
-    [Pa,SN]=Sig_Pa_SN(FFT,FreqIdx,1);
+    [dsp,SN]=Sig_dsp_SN(FFT,FreqIdx,1);
     SigSetFeatures.SigSets(i).Idx       = FreqIdx;
     SigSetFeatures.SigSets(i).Freqs     = FreqSet;
-    SigSetFeatures.SigSets(i).FreqPower = Pa;
-    SigSetFeatures.SigSets(i).SetPower  = sum(Pa);
+    SigSetFeatures.SigSets(i).Dsp       = dsp;
+    SigSetFeatures.SigSets(i).SetPower  = sum(dsp);
     SigSetFeatures.SigSets(i).FreqSN    = SN;
     % sort with increasing power for fondamentals
-    [sv,iv] = sort(SigSetFeatures.SigSets(i).FreqPower(1:nFreqs));     
+    [sv,iv] = sort(SigSetFeatures.SigSets(i).Dsp(1:nFreqs));     
     SigSetFeatures.SigSets(i).iSortH0   = iv;
     % sort with increasing power for harmonics 1
-    [sv,iv] = sort(SigSetFeatures.SigSets(i).FreqPower(nFreqs+1:nFreqs*2));     
+    [sv,iv] = sort(SigSetFeatures.SigSets(i).Dsp(nFreqs+1:nFreqs*2));     
     SigSetFeatures.SigSets(i).iSortH1   = iv+nFreqs;    
     % seek signals sens
     T  = 1 ./ SigSetFeatures.SigSets(i).Freqs(1:nFreqs,1);
@@ -45,8 +45,8 @@ function SigSetFeatures = Sig_features(s,FFT,Fe,SigSetFreqs,tol,dbg)
     SigSetFeatures.SigSets(i).Phi       = phi;   
   endfor
   % global signal/noise power and S/N
-  SigSetFeatures.SigPower      = sum(Sig_power(FFT,SigIdx));
-  SigSetFeatures.NoisePower    = sum(Sig_power(FFT,NoiseIdx));
+  SigSetFeatures.SigPower      = sum(Sig_dsp(FFT,SigIdx));
+  SigSetFeatures.NoisePower    = sum(Sig_dsp(FFT,NoiseIdx));
   SigSetFeatures.SN            = SigSetFeatures.SigPower / SigSetFeatures.NoisePower;  
   [sp,ip]                      = sort([SigSetFeatures.SigSets(1:nSet).SetPower]);  
   SigSetFeatures.SetPoweriSort = ip;  
@@ -72,7 +72,7 @@ endfunction
 function Sig_print_SigSetFeatures(ssf)    
   printf("SetFreqs : %7.1f %7.1f %7.1f %7.1f %7.1f %7.1f\n",ssf.Freqs);
   printf("FreqIdx  : %7d %7d %7d %7d %7d %7d\n",ssf.Idx);
-  printf("Powers   : %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f\n",ssf.FreqPower);
+  printf("Powers   : %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f\n",ssf.Dsp);
   printf("FreqSN   : %7.2f %7.2f %7.2f %7.2f %7.2f %7.2f\n",ssf.FreqSN);
   printf("OrderH0  : %7d %7d %7d\n",ssf.iSortH0);
   printf("OrderH1  : %7d %7d %7d\n",ssf.iSortH1);
@@ -136,7 +136,7 @@ n     : index span for noise computation
 SN    : col vector S/N  
 Pa    : col vector power for fft(idx)
 %}
-function [Pa,SN]=Sig_Pa_SN(FFT,idx,n)
+function [Pa,SN]=Sig_dsp_SN(FFT,idx,n)
   [rows,cols] = size(idx);  
   N           = length(FFT);
   for k=1:2*n+1  
@@ -147,7 +147,7 @@ function [Pa,SN]=Sig_Pa_SN(FFT,idx,n)
   endfor  
   for k=1:rows % compute power for all f_k  
     ix     = idx_SB(k,:)';
-    P      = Sig_power(FFT,ix);        
+    P      = Sig_dsp(FFT,ix);        
     Pnoise = 1/(2*n)*(sum(P(1:n))+sum(P(n+2:2*n+1)));% power noise around f_i
     SN(k,1)= P(n+1) / Pnoise; % S/B for f_i  
     Pa(k,1)= P(n+1);
@@ -155,7 +155,7 @@ function [Pa,SN]=Sig_Pa_SN(FFT,idx,n)
 endfunction
 
 % power for FFT(idx)
-function P=Sig_power(FFT,idx)
+function P=Sig_dsp(FFT,idx)
   N = length(FFT);
   P = 2/N^2 * abs((FFT(idx) .* conj(FFT(idx))));    
 endfunction
