@@ -1,0 +1,12 @@
+Al:=790e-9:;
+Rl:=200e-3:;
+S:=12.3e-6:;
+Ve:=300e-3:;
+f:=410:;
+w:=2*pi*f:;
+Bmax:=100e-3:;
+K:=(4.44*f*S*Bmax):;
+exp1 := x^4*Al^2*w^2 - x^2*(Ve*Al*w/K)^2 + Rl^2;
+exp2 := x^4*Al^2*w^2*K^2 - x^2*Al^2*w^2*Ve^2 + Rl^2*K^2;
+solve(exp1=0,x);
+//solve(x^4*Al^2 - x^2*(Ve*Al*K)^2 + Rl^2=0,x)
