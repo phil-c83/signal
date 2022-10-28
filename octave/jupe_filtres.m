@@ -5,17 +5,32 @@ close all;
 SigSetFreqs=[410 440 470 520 560 590 610 640 670 710 740 770];
 Freqs=[SigSetFreqs,SigSetFreqs*2]';
 
-function print_filter_phases(H,f)
-  args = arg(H(2*pi*f));
+% static gain, cut off pulsation and quality factor for low pass filter
+Kl = [1.75;1.75;1.75]';
+Wcl= 2*pi*[1977;1977;2009]';
+Ql = [0.514;0.697;1.944]';
+
+% static gain, cut off pulsation and quality factor for high pass filter
+Kh = [1.036;1.33;1.91;2.6]';
+Wch= 2*pi*[338;338;338;338]';
+Qh = [0.509;0.599;0.917;2.5]';
+
+
+
+function print_filter_phases(s,f)
+  args = arg(s);
   N    = length(f)/2;
+  tau  = -args ./ (2*pi*f) ;
+  it   = find(tau<0);
+  tau(it) = 1 ./ f(it) + tau(it);
   for k=1:N
-    printf("f=%4d arg@f=%+3.2f arg(w)/w=%+6.5f 2f=%4d arg@2f=%+3.2f arg(2w)/2w=%+6.5f\n",
-            f(k),args(k),args(k)/(2*pi*f(k)),f(k+N),args(k+N),args(k+N)/(2*pi*f(k+N)));
+    printf("f=%4d arg@f=%+3.2f Tw=%+7.6f 2f=%4d arg@2f=%+3.2f T2w=%+7.6f\n",
+            f(k),args(k),tau(k),f(k+N),args(k+N),tau(k+N));
   endfor
+  printf("\n");
 endfunction
 
 s   = tf('s');
-
 
 %   low pass
 % 1st Pb stage
@@ -42,16 +57,6 @@ Hl2 = K2*Wc2^2 / (Wc2^2 + Wc2/Q2*s + s^2);
 Hl3 = K3*Wc3^2 / (Wc3^2 + Wc3/Q3*s + s^2);
 Hl  = Hl1*Hl2*Hl3;
 
-%{
-figure;
-bode(Hl1);
-figure;
-bode(Hl2);
-figure;
-bode(Hl3);
-figure;
-bode(Hl1*Hl2*Hl3);
-%}
 
 % high pass
 % H(s) = K*s^2 / (Wc^2 + Wc/Q*s + s^2)
@@ -79,11 +84,59 @@ H = Hl*Hh;
 figure;
 bode(H);
 
-print_filter_phases(H,Freqs);
 
 
 
 
+%{
+eval low pass butterworth filter @ w
+   K   : static gain
+   Wc  : cut off pulsation
+   Q   : Quality factor
+   w   : vector pulsation to eval
+%}
+function s=lp_2nd_butter(K,Wc,Q,w)
+
+  s =  K*Wc^2 ./ (Wc^2 + Wc/Q*i*w - w.^2 );
+
+endfunction
+
+%{
+eval high pass butterworth filter @ w
+   K   : static gain
+   Wc  : cut off pulsation
+   Q   : Quality factor
+   w   : vector pulsation to eval
+%}
+function s=hp_2nd_butter(K,Wc,Q,w)
+
+  s =  -K*w.^2 ./ (Wc^2 + Wc/Q*i*w - w.^2 );
+
+endfunction
+
+
+%{
+transfert function composed with low/high pass butterworth
+   Kl,Kh   : vector static gain for low/high pass
+   Wcl,Wch : vector cut off pulsation
+   Ql,Qh   : vector quality factor
+   w       : vector pulsation to eval
+
+   return  : s vector values for w
+%}
+function s=bp_butter(Kl,Wcl,Ql,Kh,Wch,Qh,w)
+
+  s = ones(length(w),1);
+  for i=1:length(Kl)
+    s =  s .* lp_2nd_butter(Kl(i),Wcl(i),Ql(i),w);
+  endfor
+  for i=1:length(Kh)
+    s =  s .* hp_2nd_butter(Kh(i),Wch(i),Qh(i),w);
+  endfor
+endfunction
+
+s = bp_butter(Kl,Wcl,Ql,Kh,Wch,Qh,2*pi*Freqs);
+print_filter_phases(s,Freqs);
 
 
 
