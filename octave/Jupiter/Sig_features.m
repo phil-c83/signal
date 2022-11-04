@@ -55,7 +55,7 @@ function SigSetFeatures = Sig_features(s,FFT,Fe,SigSetFreqs,tol,dbg)
     dPhi     = arg(z);
     %{
     % H(exp(iwt)) = exp(iwt+phi) = exp(iw(t+phi/w)) = exp(iw(t-tau)) => tau = -phi/w
-    % if phi>0 then phi is phase advance and 2*pi-phi is a phase lag
+    % if phi>0 then phi is phase lead and 2*pi-phi is a phase lag
     ip       = find(dPhi > 0);
     dPhi(ip) = 2*pi - dPhi(ip); % now dPhi is phase lag vector
     %}
@@ -252,9 +252,9 @@ function Sig_plot(s,T0,FFT,Fe,FMAX)
   subplot(3,1,1);
   plot(nTe,s,"--pk;sig;");
   subplot(3,1,2);
-  plot(ndF,2*abs(FFT(idx+1))/N,"--pb;mods;");
+  plot(ndF(2:end),2*abs(FFT(2:idx_max+1))/N,"--pb;mods;");
   subplot(3,1,3);
-  plot(ndF,arg(FFT(idx+1)),"--pg;args;");
+  plot(ndF(2:end),arg(FFT(idx(2:idx_max+1))),"--pg;args;");
   %figure;
   %plot3(ndF,FFT);
 endfunction
