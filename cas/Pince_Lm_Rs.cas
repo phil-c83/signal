@@ -1,0 +1,8 @@
+//eq1:=U^2/Q-(L*w*Rs^2)/(Rs^2+(L*w)^2);
+//eq2:=U^2/P-(Rf*Rs^2+(L*w)^2*(Rf+Rs))/(Rs^2+(L*w)^2);
+
+// calcul Rf,Lm en fonction de P,Q,I,w
+eq1 := P-I^2*(R1*Rf^2+Lm^2*w^2*(R1+Rf))/(Rf^2+Lm^2*w^2):;
+eq2 := Q-I^2*(Lm*w*Rf^2)/(Rf^2+Lm^2*w^2):;
+solve([eq1,eq2],[Rf,Lm]);
+
