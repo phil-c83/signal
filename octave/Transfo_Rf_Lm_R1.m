@@ -2,23 +2,34 @@ Rf=628e-3;
 Lm=232e-6;
 R1=390e-3;
 
-TolCosphi = 0.1;
-CosPhi = [0.99;0.94;0.92;0.91;0.90];
-SupCosPhi = min(CosPhi+TolCosphi,1);
-InfCosPhi = max(CosPhi-TolCosphi,-1);
+
+CosUI = [0.99;0.94;0.92;0.91;0.90];
 I1rms = [0.981;0.625;0.603;0.591;0.583];
 U1rms = [0.395;0.456;0.459;0.461;0.463];
 
-[x,y]=pol2cart(-acos(CosPhi),I1rms);
-I1=complex(x,y);
-[x,y]=pol2cart(-acos(SupCosPhi),I1rms);
-SupI1=complex(x,y);
-[x,y]=pol2cart(-acos(InfCosPhi),I1rms);
-InfI1=complex(x,y);
+I2rms = [6;0.7;0.35;0.17;0];
 
 
+%{
+Z = R1+(Rf//Lm) => Z = (R1*Rf^2+Lm^2*w^2*(R1+Rf) + i*(Lm*w*Rf^2))/(Rf^2+Lm^2*w^2)
+S = U*conj(I) = Z*I*conj(I) = Z*I^2 = I^2*(R+i*X)
+S = I^2*R+i*I^2*X  => P = I^2*R  Q = I^2*X
+Q/I^2 = Lm*w*Rf^2/(Rf^2+Lm^2*w^2) P/I^2 = ((R1*Rf^2+Lm^2*w^2*(R1+Rf))/(Rf^2+Lm^2*w^2)
+
+Rf = N(I,P,Q,R1) / (I^2*(P-I^2*R1))
+Lm = N(I,P,Q,R1) / (I^2*Q*w)
+N(I,P,Q,R1) = I^4*R1^2-2*I^2*P*R1+P^2+Q^2
+%}
+function [Rf,Lm]=eval_Rf_Lm(I,P,Q,R1,f)
+  w  = 2*pi*f;
+  N  = I.^4*R1^2-2.*I.^2.*P*R1+P.^2+Q.^2;
+  Rf = N ./ (I.^2.*(P-I.^2*R1));
+  Lm = N ./ (I.^2.*Q*w);
+endfunction
+
+% Distributed n values around p
 function Pv=ParamValues(p,dp,n)
-  Pv = p-dp : 2*dp/n : p+dp;
+  Pv = (p-dp : 2*dp/n : p+dp)';
 endfunction
 
 %{
@@ -42,7 +53,14 @@ function ImI2 = I2_modele2(f,m,Lm,Rf,R1,I1,V1,phi)
 endfunction
 %}
 
+% n1*I1-n2*I2=Reluc*Flux=n1*I10
+function i2=I2_I0_modele2(f,m,Lm,R1,I1,V1)
+  i10 = I1(end);
+  i2 =(I1-i10)/m;
+endfunction
+
 %{
+Ampere theorem under hopkinson form
 n1*I1-n2*I2 = Reluc*Flux ou
 n1*Im=reluc*Flux,I1=Im+m*I2
 
@@ -52,34 +70,61 @@ n1*I1-n2*I2 = 1/n1*n1^2/Lm*(V1-R1*I1)/(i*w)
 n1*I1-n2*I2 = n1*(V1-R1*I1)/(i*XL)
 I1*(1-i*R1/XL)+i*V1/XL = m*I2
 %}
-function i2=I2_Th_Ampere_modele2(f,m,Lm,R1,I1,V1)
+function i2=I2_Hopkinson(f,m,Lm,R1,I1rms,V1rms,cos_ui)
   XL = Lm*2*pi*f;
-  i2 = 1/m*(I1*(1-i*R1/XL)+i*V1/XL);
+  [x,y]=pol2cart(-acos(cos_ui),I1rms);%inductive load
+  I1=complex(x,y);
+  i2 = 1/m*(I1*(1-i*R1/XL)+i*V1rms/XL);
 endfunction
 
-% n1*I1-n2*I2=Reluc*Flux=n1*I10
-function i2=I2_I0_modele2(f,m,Lm,R1,I1,V1)
-  i10 = I1(end);
-  i2 =(I1-i10)/m;
+function [r1,lm]=Minimize_I2_with_r1_lm(f,m,Lm,R1,I1rms,U1rms,cos_ui,I2rms)
+  min_err2 = realmax;
+  PR1 = ParamValues(R1,0.3*R1,20);
+  PLm = ParamValues(Lm,0.3*Lm,20);
+
+  for i=1:length(PR1)
+    for j=1:length(PLm)
+      I2c = abs(I2_Hopkinson(f,m,PLm(j),PR1(i),I1rms,U1rms,cos_ui));
+      err2= sum((I2c-I2rms).^2);
+      if(err2 < min_err2)
+        min_err2 = err2;
+        r1 = PR1(i);
+        lm = PLm(j);
+      endif
+    endfor
+  endfor
+
+endfunction
+
+function [best_cos,best_i2,min_err2,adj]=Minimize_I2_with_cosui(f,m,Lm,R1,I1rms,U1rms,cos_ui,I2rms)
+  niter = 10000;
+  adj_value = 0.1;
+  min_err2 = realmax;
+  best_cos = ones(length(cos_ui),1);
+
+  for i=1:niter
+    adjv = rand(length(cos_ui),1)*2*adj_value-adj_value;
+    cosui = min(cos_ui + adjv,1);
+    I2c = abs(I2_Hopkinson(f,m,Lm,R1,I1rms,U1rms,cosui));
+    err2= sum((I2c-I2rms).^2);
+    if(err2 < min_err2)
+      min_err2 = err2;
+      best_cos = cosui;
+      best_i2  = I2c;
+      adj = adjv;
+    endif
+  endfor
 endfunction
 
 
-%{
-Z = R1+(Rf//Lm) => Z = (R1*Rf^2+Lm^2*w^2*(R1+Rf) + i*(Lm*w*Rf^2))/(Rf^2+Lm^2*w^2)
-S = U*conj(I) = Z*I*conj(I) = Z*I^2 = I^2*(R+i*X)
-S = I^2*R+i*I^2*X  => P = I^2*R  Q = I^2*X
-Q/I^2 = Lm*w*Rf^2/(Rf^2+Lm^2*w^2) P/I^2 = ((R1*Rf^2+Lm^2*w^2*(R1+Rf))/(Rf^2+Lm^2*w^2)
 
-Rf = N(I,P,Q,R1) / (I^2*(P-I^2*R1))
-Lm = N(I,P,Q,R1) / (I^2*Q*w)
-N(I,P,Q,R1) = I^4*R1^2-2*I^2*P*R1+P^2+Q^2
-%}
-function [Rf,Lm]=eval_Rf_Lm(I,P,Q,R1,f)
-  w  = 2*pi*f;
-  N  = I.^4*R1^2-2.*I.^2.*P*R1+P.^2+Q.^2;
-  Rf = N ./ (I.^2.*(P-I.^2*R1));
-  Lm = N ./ (I.^2.*Q*w);
-endfunction
+[r1,lm]=Minimize_I2_with_r1_lm(480,1/7,Lm,R1,I1rms,U1rms,CosUI,I2rms)
+[best_cos,best_i2,err,adj]=Minimize_I2_with_cosui(480,1/7,Lm,R1,I1rms,U1rms,CosUI,I2rms)
+
+
+
+
+
 
 %{
 [Rf,Lm]=eval_Rf_Lm([1.05;1.338;1.082],[0.906;1.093;0.912],[0.389;0.513;0.407],R1,480)
@@ -116,10 +161,5 @@ i2=I2_I0_modele2(480,1/7,Lm,R1,InfI1,U1rms);
 printf("I10 I2 = %4.3f\n",abs(i2));
 %}
 
-PR1 = ParamValues(R1,0.2*R1,10);
-XL  = 2*pi*480*Lm;
-PXL = ParamValues(XL,0.2*XL,10);
-
-[GR1,GXL] = meshgrid(PR1,PXL);
 
 
