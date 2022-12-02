@@ -9,7 +9,7 @@ CosUI = [0.98 ;0.97 ;0.95 ;0.92 ;0.92 ;0.91 ;0.9];
 I1rms = [0.991;0.713;0.632;0.618;0.598;0.579;0.579];
 U1rms = [0.397;0.443;0.456;0.461;0.463;0.468;0.466];
 %}
-% mesure TDS
+% mesure oscillo TDS
 U1rms = [.293;.378;.401;.408;.413;.416;.420];
 I1rms = [.990;.7;.622;.605;.587;.578;.572];
 CosUI = [.989;.953;.938;.928;.914;.901;.883];
@@ -85,17 +85,6 @@ function i2=I2_modele4(f,m,Lm,Lf,Rf,R1,I1rms,U1rms,cos_ui)
   i2 = abs((I1*(Z1+Zm)-U1rms)/(m*Zm));
 endfunction
 
-%{
-function ReI2 = I2_modele2(f,m,Lm,Rf,R1,I1,V1,phi)
-  XL = Lm*2*pi*f;
-  ReI2 = (XL*(I1*cos(phi)*Rf-V1+I1*R1*cos(phi))+I1*Rf*R1*sin(phi)) / (m*XL*Rf);
-endfunction
-
-function ImI2 = I2_modele2(f,m,Lm,Rf,R1,I1,V1,phi)
-  XL = Lm*2*pi*f;
-  ImI2 = (XL*(I1*sin(phi)*Rf+I1*R1*sin(phi))+V1*Rf-I1*Rf*R1*cos(phi)) / (m*XL*Rf);
-endfunction
-%}
 
 % n1*I1-n2*I2=Reluc*Flux=n1*I10
 function i2=I2_I0_modele2(f,m,Lm,R1,I1rms,U1rms,cos_ui)
@@ -168,14 +157,14 @@ endfunction
 
 function [b_Lm,b_Lf,b_R1,b_Rf,b_I2rms]=Minimize_model4(f,m,Lm,Lf,R1,Rf,I1rms,U1rms,I2rms,cos_ui)
   min_err = realmax;
-  niter = 100000;
-  rel_tol = 0.2;
+  niter = 1000000;
+  rel_tol = 0.3;
   for i=1:niter
     p_R1 = rand_param(R1,rel_tol);
     p_Lm = rand_param(Lm,rel_tol);
     p_Rf = rand_param(Rf,rel_tol);
     p_Lf = rand_param(Lf,rel_tol);
-    I2e  = abs(I2_modele4(f,m,p_Lm,p_Lf,p_Rf,p_R1,I1rms,U1rms,cos_ui));
+    I2e  = abs(I2_modele4(f,m,p_Lm,p_Lf,p_R1,p_Rf,I1rms,U1rms,cos_ui));
     err2  = sum((I2e-I2rms).^2);
     if( err2 < min_err )
       min_err = err2;
@@ -188,6 +177,30 @@ function [b_Lm,b_Lf,b_R1,b_Rf,b_I2rms]=Minimize_model4(f,m,Lm,Lf,R1,Rf,I1rms,U1r
   endfor
 endfunction
 
+
+function [b_Lm,b_Lf,b_R1,b_Rf,b_I2rms]=VMinimize_model4(f,m,Lm,Lf,R1,Rf,I1rms,U1rms,I2rms,cos_ui)
+  min_err = realmax;
+  niter = 1000000;
+  rel_tol = 0.3;
+  r = rel_tol*(2*rand(4,niter)-1)+1;
+  p = diag([Lm;Lf;R1;Rf]);% random values for each params ie p +/- (p*rel_tol)
+  rp = p*r;
+
+  for i=1:niter
+    I2e  = abs(I2_modele4(f,m,rp(1,i),rp(2,i),rp(3,i),rp(4,i),I1rms,U1rms,cos_ui));
+    err2  = sum((I2e-I2rms).^2);
+    if( err2 < min_err )
+      min_err = err2;
+      b_R1 = rp(3,i);
+      b_Rf = rp(4,i);
+      b_Lm = rp(1,i);
+      b_Lf = rp(2,i);
+      b_I2rms = I2e;
+    endif
+  endfor
+endfunction
+
+
 % eval de E1=U1-R*I1
 function E1=eval_e1(U1rms,I1rms,cosui,R1)
   [x,y] = pol2cart(-acos(cosui),I1rms);%inductive load
@@ -196,58 +209,12 @@ function E1=eval_e1(U1rms,I1rms,cosui,R1)
 endfunction
 
 % valeurs mesurees
-E1=eval_e1([.293;.378;.401;.408;.413;.416;.420],[.990;.7;.622;.605;.587;.578;.572],[.989;.953;.938;.928;.914;.901;.883],300e-3)
-%[b_Lm,b_Lf,b_R1,b_Rf,b_I2rms]=Minimize_model4(480,1/7,Lm,20e-6,R1,Rf,I1rms,U1rms,I2rms,CosUI)
-
+%E1=eval_e1([.293;.378;.401;.408;.413;.416;.420],[.990;.7;.622;.605;.587;.578;.572],[.989;.953;.938;.928;.914;.901;.883],300e-3)
+[b_Lm,b_Lf,b_R1,b_Rf,b_I2rms]=VMinimize_model4(480,1/7,Lm,20e-6,500e-3,320e-3,I1rms,U1rms,I2rms,CosUI)
+%[b_Lm,b_Lf,b_R1,b_Rf,b_I2rms]=Minimize_model4(480,1/7,Lm,0,R1,Rf,I1rms,U1rms,I2rms,CosUI)
 
 %{
 [r1,lm,i2]=Minimize_I2_with_r1_lm(480,1/7,Lm,R1,I1rms,U1rms,CosUI,I2rms)
 [best_cos,i2,err,adj]=Minimize_I2_with_cosui(480,1/7,Lm,R1,I1rms,U1rms,CosUI,I2rms)
 %}
-
-
-%i2=abs(I2_Hopkinson(480,1/7,Lm,R1,I1rms,U1rms,CosUI))
-% i2=abs(I2_modele2(480,1/7,Lm,Rf,R1,I1rms,U1rms,CosUI))
-% i2=abs(I2_I0_modele2(480,1/7,Lm,R1,I1rms,U1rms,CosUI))
-% i2=abs(I2_M_modele2(480,1/7,Lm,Rf,R1,I1rms,U1rms,CosUI))
-% i2=abs(I2_Lf_M_modele2(480,1/7,662e-6,517e-6,Rf,300e-3,I1rms,U1rms,CosUI))
-% i2=abs(I2_modele4(480,1/7,Lm,10e-6,Rf*11/10,R1,I1rms,U1rms,CosUI))
-
-
-%{
-[Rf,Lm]=eval_Rf_Lm([1.05;1.338;1.082],[0.906;1.093;0.912],[0.389;0.513;0.407],R1,480)
-I2_modele2(480,1/7,Lm,Rf,R1,I1,U1);
-%}
-%{
-i2=I2_Th_Ampere_modele2(480,1/7,Lm,R1,I1,U1rms);
-printf("Th_Ampere I2 = %4.3f\n",abs(i2));
-printf("\n");
-i2=I2_Th_Ampere_modele2(480,1/7,Lm,R1,SupI1,U1rms);
-printf("Th_Ampere I2 = %4.3f\n",abs(i2));
-printf("\n");
-i2=I2_Th_Ampere_modele2(480,1/7,Lm,R1,InfI1,U1rms);
-printf("Th_Ampere I2 = %4.3f\n",abs(i2));
-printf("\n");
-
-i2=I2_modele2(480,1/7,Lm,Rf,R1,I1,U1rms);
-printf("Modele2 I2 = %4.3f\n",abs(i2));
-printf("\n");
-i2=I2_modele2(480,1/7,Lm,Rf,R1,SupI1,U1rms);
-printf("Modele2 I2 = %4.3f\n",abs(i2));
-printf("\n");
-i2=I2_modele2(480,1/7,Lm,Rf,R1,InfI1,U1rms);
-printf("Modele2 I2 = %4.3f\n",abs(i2));
-printf("\n");
-
-i2=I2_I0_modele2(480,1/7,Lm,R1,I1,U1rms);
-printf("I10 I2 = %4.3f\n",abs(i2));
-printf("\n");
-i2=I2_I0_modele2(480,1/7,Lm,R1,SupI1,U1rms);
-printf("I10 I2 = %4.3f\n",abs(i2));
-printf("\n");
-i2=I2_I0_modele2(480,1/7,Lm,R1,InfI1,U1rms);
-printf("I10 I2 = %4.3f\n",abs(i2));
-%}
-
-
 

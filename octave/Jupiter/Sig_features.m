@@ -1,19 +1,39 @@
 ## Author: philippe coste <phil@phil-debian-pc>
 ## Created: 2022-09-29
 
+%{
+    eval band pass filter response
+    % static gain, cut off pulsation and quality factor for low pass filter
+    Kl = [1.75;1.75;1.75];
+    Wcl= 2*pi*[1977;1977;2009];
+    Ql = [0.514;0.697;1.944];
 
+    % static gain, cut off pulsation and quality factor for high pass filter
+    Kh = [1.036;1.33;1.91;2.6];
+    Wch= 2*pi*[338;338;338;338];
+    Qh = [0.509;0.599;0.917;2.5];
 
-function SigSetFeatures = Sig_features(s,FFT,Fe,SigSetFreqs,tol,dbg)
+    z        = Sig_BP_filter(Kl,Wcl,Ql,Kh,Wch,Qh,2*pi*FreqSet);
+    dPhi     = arg(z);
+    %{
+    % H(exp(iwt)) = exp(iwt+phi) = exp(iw(t+phi/w)) = exp(iw(t-tau)) => tau = -phi/w
+    % if phi>0 then phi is phase lead and 2*pi-phi is a phase lag
+    ip       = find(dPhi > 0);
+    dPhi(ip) = 2*pi - dPhi(ip); % now dPhi is phase lag vector
+    %}
+    % apply phase correction
+    FFT_arg_f_c  = FFT_arg_f  - dPhi(1:nFreqs);
+    FFT_arg_2f_c = FFT_arg_2f - dPhi(nFreqs+1:end);
 
-  % static gain, cut off pulsation and quality factor for low pass filter
-  Kl = [1.75;1.75;1.75];
-  Wcl= 2*pi*[1977;1977;2009];
-  Ql = [0.514;0.697;1.944];
+    % renormalize phase between -pi,+pi
+    FFT_arg_f_c  = Sig_phase_normalize(FFT_arg_f_c);
+    FFT_arg_2f_c = Sig_phase_normalize(FFT_arg_2f_c);
+    FFT_arg_f_c  = Sig_phase_atan2(FFT_arg_f_c);
+    FFT_arg_2f_c = Sig_phase_atan2(FFT_arg_2f_c);
+%}
 
-  % static gain, cut off pulsation and quality factor for high pass filter
-  Kh = [1.036;1.33;1.91;2.6];
-  Wch= 2*pi*[338;338;338;338];
-  Qh = [0.509;0.599;0.917;2.5];
+% phase_correction(f) : phase to add for getting genuine signal
+function SigSetFeatures = Sig_features(s,FFT,Fe,SigSetFreqs,phase_correction,tol,dbg)
 
   [nFreqs,nSet] = size(SigSetFreqs);
   SigSetFeatures.nFreqs = nFreqs;
@@ -50,24 +70,11 @@ function SigSetFeatures = Sig_features(s,FFT,Fe,SigSetFreqs,tol,dbg)
     FFT_arg_f   = arg(FFT(FreqIdx(1:nFreqs)));
     FFT_arg_2f  = arg(FFT(FreqIdx(nFreqs+1:end)));
 
-    % eval band pass filter response
-    z        = Sig_BP_filter(Kl,Wcl,Ql,Kh,Wch,Qh,2*pi*FreqSet);
-    dPhi     = arg(z);
-    %{
-    % H(exp(iwt)) = exp(iwt+phi) = exp(iw(t+phi/w)) = exp(iw(t-tau)) => tau = -phi/w
-    % if phi>0 then phi is phase lead and 2*pi-phi is a phase lag
-    ip       = find(dPhi > 0);
-    dPhi(ip) = 2*pi - dPhi(ip); % now dPhi is phase lag vector
-    %}
-    % apply phase correction
-    FFT_arg_f_c  = FFT_arg_f  - dPhi(1:nFreqs);
-    FFT_arg_2f_c = FFT_arg_2f - dPhi(nFreqs+1:end);
-
-    % renormalize phase between -pi,+pi
-    FFT_arg_f_c  = Sig_phase_normalize(FFT_arg_f_c);
-    FFT_arg_2f_c = Sig_phase_normalize(FFT_arg_2f_c);
-    FFT_arg_f_c  = Sig_phase_atan2(FFT_arg_f_c);
-    FFT_arg_2f_c = Sig_phase_atan2(FFT_arg_2f_c);
+    % apply phase correction phiatan2=Sig_phase_atan2(phi)
+    FFT_arg_f_c   = FFT_arg_f  - phase_correction(FreqIdx(1:nFreqs));
+    FFT_arg_f_c   = Sig_phase_atan2(FFT_arg_f_c);
+    FFT_arg_2f_c  = FFT_arg_2f - phase_correction(FreqIdx(nFreqs+1:end));
+    FFT_arg_2f_c  = Sig_phase_atan2(FFT_arg_2f_c);
 
     [sens,gap,lag,phi,CFT_arg_2f]=Sig_sens(FFT_arg_f_c,FFT_arg_2f_c,
                                            SigSetFeatures.SigSets(i).Freqs(1:nFreqs,1),
