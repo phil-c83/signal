@@ -1,14 +1,14 @@
 function [a,phi,const,theta]=MCsinus(f0, t, s)
-%Modèle pour le MC ---> a*sin(2*pi*f0*t+ phi) + const
+%Modele pour le MC ---> a*sin(2*pi*f0*t+ phi) + const
 %Input:
-%f0 : fréquence du signal
+%f0 : frequence du signal
 %t : temps (vecteur colonne)
 %s : signal (vecteur colonne)
-%Output: 
+%Output:
 %a: amplitude du sinus
 %phi: phase du sinus
 %const: offset du sinus
-%theta: vecteur des estimés du MC
+%theta: vecteur des estimes du MC
 
 
 
