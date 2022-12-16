@@ -6,10 +6,10 @@ close all;
 Freqs=[410 440 470 520 560 590 610 640 670 710 740 770];
 Freqs= [Freqs 2*Freqs]';
 
-% Clamp parameters Lm(Vg,f),Rf(Vg,f) @ f fixed
-function [Vg,Lm,Rf]=clamp_curves(cl,f)
-  iv = find(cl(:,2)==f);
-  Vg = cl(iv,3);
+% Clamp parameters Lm(V,f),Rf(V,f) @ f fixed
+function [V,Lm,Rf]=clamp_curves(cl,f)
+  iv = find(cl(:,1)==f);
+  V  = cl(iv,3);
   Lm = cl(iv,4);
   Rf = cl(iv,5);
 endfunction
@@ -18,44 +18,6 @@ endfunction
 function plot_3d_Lm_curve(cl)
   plot3(cl(:,2),cl(:,3),cl(:,4));
 endfunction
-
-%{
- Lm(f,v) = a0+a1*f+a2*f^2+a3*v+a4*v^2
- Lmvalues = Z*a => a = inv(Z'*Z)*Z'*pvalues
- a = [a0 a1 a2 a3 a4]'
-%}
-function [a0,a1,a2,a3,a4]=clamp_Lm_estimate(fq,vg,Lmvalues)
-  N    = length(fq);
-  Z    = [ones(N,1),fq,fq.^2,vg,vg.^2];%design matrix
-  ZTZ  = Z'*Z;
-  ZTpa = Z'*Lmvalues;
-  iZTZ = inv(ZTZ);
-  a    = iZTZ*ZTpa;
-  a0   = a(1);
-  a1   = a(2);
-  a2   = a(3);
-  a3   = a(4);
-  a4   = a(5);
-endfunction
-
-%{
- Rf(f,v) = a0+a1*f+a2*v+a3*v^2
- Rfvalues = Z*a => a = inv(Z'*Z)*Z'*pvalues
- a = [a0 a1 a2 a3]'
-%}
-function [a0,a1,a2,a3]=clamp_Rf_estimate(fq,vg,Rfvalues)
-  N    = length(fq);
-  Z    = [ones(N,1),fq,vg,vg.^2];%design matrix
-  ZTZ  = Z'*Z;
-  ZTpa = Z'*Rfvalues;
-  iZTZ = inv(ZTZ);
-  a    = iZTZ*ZTpa;
-  a0   = a(1);
-  a1   = a(2);
-  a2   = a(3);
-  a3   = a(4);
-endfunction
-
 
 
 function plot_clamps_curves(cl,freqs)
@@ -134,14 +96,15 @@ function [Lma0_vs_f,Lma1_vs_f,Lma2_vs_f]=plot_Lm_model_param(cl,freqs)
 
 endfunction
 
-function [a0,a1,a2,a3,a4]=Lm_estimate_and_plot(fq,vg,Lmvalues,label)
+function [a0,a1,a2,a3,a4,a5]=Lm_estimate_and_plot(fq,vg,Lmvalues,label)
 
-  [a0,a1,a2,a3,a4] = clamp_Lm_estimate(fq,vg,Lmvalues);
+  %Lm(f,v) = a0 + a1*f + a2*v + a3*f*v + a4*f^2 + a5*v^2
+  [a0,a1,a2,a3,a4,a5] = clamp_Lm_estimate(fq,vg,Lmvalues);
   figure;
 
   plot3(fq,vg,Lmvalues,["-k;" label ";"],
-        fq,vg,a0+a1*fq+a2*fq.^2+a3*vg+a4*vg.^2,["-r;es" label ";"]);
-  printf("%s(f,v)=%+g %+g*f %+g*f^2 %+g*v %+g*v^2\n",label,a0,a1,a2,a3,a4);
+        fq,vg,a0 + a1*fq + a2*vg + a3*fq.*vg + a4*fq.^2 + a5*vg.^2,["-r;es" label ";"]);
+  printf("%s(f,v)=%+g %+g*f %+g*v %+g*f*v %+g*f^2 %+g*v^2\n",label,a0,a1,a2,a3,a4,a5);
 
 endfunction
 
@@ -156,21 +119,24 @@ function [a0,a1,a2,a3]=Rf_estimate_and_plot(fq,vg,Rfvalues,label)
 
 endfunction
 
+function [eLm_max,eRf_max]=eval_error_max(cl,Lm_coefs,Rf_coefs)
+  N = length(cl(:,1));
+  Lm_c = [ones(N,1),cl(:,1),cl(:,1).^2,cl(:,3),cl(:,3).^2] * Lm_coefs;
+  eLm  = abs(Lm_c - cl(:,4));
+  eLm_max = max(eLm);
+  Rf_c = [ones(N,1),cl(:,1),cl(:,3),cl(:,3).^2] * Rf_coefs;
+  eRf  = abs(Rf_c - cl(:,5));
+  eRf_max = max(eRf);
+endfunction
+
+
+
 
 [fname, fpath, fltidx]=uigetfile ("/home/phil/Made/git-prj/signal/data/*.csv");
 file = [fpath "/" fname];
-%csv : clamp , freq , voltage , Lm , Rf
-m=dlmread(file,",",1,0);
 
-% index for each clamp
-i1 = find(m(:,1)==1.0); % idx clamp1
-i2 = find(m(:,1)==2.0); % idx clamp2
-i3 = find(m(:,1)==3.0); % idx clamp3
-
-% data for each clamp
-cl1 = m(i1,:);
-cl2 = m(i2,:);
-cl3 = m(i3,:);
+%Freq,dac_lsb,e1,Lm,Rf
+[cl1,cl2,cl3] = csv_Clamps_Lm_Rf(file);
 
 %{
 plot_params_estimate(cl1,410);
@@ -189,20 +155,31 @@ plot_clamps_curves(cl3,Freqs);
 
 
 %Lm clamp1
-[a0,a1,a2,a3,a4]=Lm_estimate_and_plot(cl1(:,2),cl1(:,3),cl1(:,4),"Lm1");
+[a0,a1,a2,a3,a4]=Lm_estimate_and_plot(cl1(:,1),cl1(:,3),cl1(:,4),"Lm1");
+Lm1_coefs = [a0,a1,a2,a3,a4]';
 %Rf clamp1
-[a0,a1,a2,a3]=Rf_estimate_and_plot(cl1(:,2),cl1(:,3),cl1(:,5),"Rf1");
+[a0,a1,a2,a3]=Rf_estimate_and_plot(cl1(:,1),cl1(:,3),cl1(:,5),"Rf1");
+Rf1_coefs = [a0,a1,a2,a3]';
 %plot_clamps_curves(cl1,Freqs);
 
 
 %Lm clamp2
-[a0,a1,a2,a3,a4]=Lm_estimate_and_plot(cl2(:,2),cl2(:,3),cl2(:,4),"Lm2");
+[a0,a1,a2,a3,a4]=Lm_estimate_and_plot(cl2(:,1),cl2(:,3),cl2(:,4),"Lm2");
+Lm2_coefs = [a0,a1,a2,a3,a4]';
 %Rf clamp2
-[a0,a1,a2,a3]=Rf_estimate_and_plot(cl2(:,2),cl2(:,3),cl2(:,5),"Rf2");
+[a0,a1,a2,a3]=Rf_estimate_and_plot(cl2(:,1),cl2(:,3),cl2(:,5),"Rf2");
+Rf2_coefs = [a0,a1,a2,a3]';
+%plot_clamps_curves(cl2,Freqs);
 
 %Lm clamp3
-[a0,a1,a2,a3,a4]=Lm_estimate_and_plot(cl3(:,2),cl3(:,3),cl3(:,4),"Lm3");
+[a0,a1,a2,a3,a4]=Lm_estimate_and_plot(cl3(:,1),cl3(:,3),cl3(:,4),"Lm3");
+Lm3_coefs = [a0,a1,a2,a3,a4]';
 %Rf clamp3
-[a0,a1,a2,a3]=Rf_estimate_and_plot(cl3(:,2),cl3(:,3),cl3(:,5),"Rf3");
+[a0,a1,a2,a3]=Rf_estimate_and_plot(cl3(:,1),cl3(:,3),cl3(:,5),"Rf3");
+Rf3_coefs = [a0,a1,a2,a3]';
+%plot_clamps_curves(cl3,Freqs);
 
-
+%[eLm1_max,eRf1_max]=eval_error_max(cl1,Lm1_coefs,Rf1_coefs)
+%[eLm2_max,eRf2_max]=eval_error_max(cl2,Lm2_coefs,Rf2_coefs)
+%[eLm3_max,eRf3_max]=eval_error_max(cl3,Lm3_coefs,Rf3_coefs)
+[Zm1,Rf1,Lm1] = eval_Zm(Rf1_coefs,Lm1_coefs,440,1.28)
