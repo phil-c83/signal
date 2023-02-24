@@ -4,7 +4,7 @@
 ## Created: 2022-12-13
 
 function m = csv_Clamps_measures (file)
-  %freq,V1,E1,I1,cos_ui,R1,I2
+  %freq,Vdac,I1,U1,cos_ui,P,I2
   m=dlmread(file,",",1,0);% skip 1st line
 
 endfunction

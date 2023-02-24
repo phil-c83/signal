@@ -1,0 +1,1 @@
+sin_sweep_sin(t,T,w0,k,m):=sin(k*w0*sin(2*pi*t/T)+w0*t+m);

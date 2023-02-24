@@ -16,9 +16,16 @@ S = I^2*R+i*I^2*X  => P = I^2*R  Q = I^2*X
 Q/I^2 = Lm*w*Rf^2/(Rf^2+Lm^2*w^2)
 P/I^2 = ((R1*Rf^2+Lm^2*w^2*(R1+Rf))/(Rf^2+Lm^2*w^2)
 
+Rf = (I1^2*R1^2 - 2*P*R1) / (P - I1^2*R1) + S^2 / (I1^2*(P + I1^2*R1))
+Rf = (I1^2*R1^2 - 2*P*R1) / (P - I1^2*R1) + U1^2*I1^2 / (I1^2*(P + I1^2*R1))
+Rf = (I1^2*R1^2 - 2*P*R1) / (P - I1^2*R1) + U1^2 / (P + I1^2*R1)
+
 Rf = N(I,P,Q,R1) / (I^2*(P-I^2*R1))
 Lm = N(I,P,Q,R1) / (I^2*Q*w)
-N(I,P,Q,R1) = I^4*R1^2-2*I^2*P*R1+P^2+Q^2
+N(I,P,Q,R1) = I^4*R1^2-2*I^2*P*R1+P^2+Q^2 = I^4*R1^2-2*I^2*P*R1+S^2
+            = I^2*(I^2*R1^2-2*P*R1+U^2) = I^2*N1
+
+
 %}
 function [Zm,Rf,Lm] = eval_Zm_with_measures(I,U,cos_ui,R1,f)
   w  = 2*pi*f;
@@ -43,7 +50,7 @@ function u=eval_poly(f,v,a)
 endfunction
 
 
-
+%{
 [f,e1,Lm,Rf] = read_csv_Lm_Rf(1);
 % Rf(f,v) parameters model with measures
 % MCDeg4(f, v, values, select)
@@ -81,21 +88,80 @@ plot3(f,e1,abs(Rf-Rf1_e),["-*k;" label ";"]);
 figure();
 label = "Lm1_err";
 plot3(f,e1,abs(Lm-Lm1_e),["-*k;" label ";"]);
+%}
+
+% plot measured/estimated param
+function plot_estimated_param(f,e1,p_es,p_m,label)
+  figure();
+  plot3(f,e1,p_m,["-*k;" label ";"],
+        f,e1,p_es,["-*r;es" label ";"]);
+  figure();
+  plot3(f,e1,abs(p_m-p_es),["-*k;abs(err)" label ";"]);
+endfunction
 
 
 % get measures U,I ... from file
 [f,U1,E1,I1,cos_ui,R1,I2_m] = read_csv_U_I_Cos(1);
-[Zm1_m,Rf1_m,Lm1_m] = eval_Zm_with_measures(I1,U1,cos_ui,R1,f);
+% find values for I2==0
+ix0 = find(I2_m==0);
+
+%[Zm,Rf,Lm] = eval_Zm_with_measures(I,U,cos_ui,R1,f)
+[Zm1_m,Rf1_m,Lm1_m] = eval_Zm_with_measures(I1(ix0),U1(ix0),cos_ui(ix0),R1(ix0),f(ix0));
+
+i440 = find(f(ix0)==440);
+i560 = find(f(ix0)==560);
+i640 = find(f(ix0)==640);
+i740 = find(f(ix0)==740);
+figure();
+plot(E1(ix0)(i440),Rf1_m(i440),"-*k;Rf1_m 640Hz;");
+hold on;
+plot(E1(ix0)(i560),Rf1_m(i560),"-*b;Rf1_m 560Hz;");
+hold on;
+plot(E1(ix0)(i640),Rf1_m(i640),"-*r;Rf1_m 640Hz;");
+hold on;
+plot(E1(ix0)(i740),Rf1_m(i740),"-*g;Rf1_m 740Hz;");
+
+
+figure();
+plot(E1(ix0)(i440),Lm1_m(i440),"-*k;Lm1_m;");
+hold on;
+plot(E1(ix0)(i560),Lm1_m(i560),"-*b;Lm1_m 560Hz;");
+hold on;
+plot(E1(ix0)(i640),Lm1_m(i640),"-*r;Lm1_m 640Hz;");
+hold on;
+plot(E1(ix0)(i740),Lm1_m(i740),"-*g;Lm1_m 740Hz;");
+
+
+%{
+% Rf(f,v) parameters model with measures for I2==0
+% MCDeg4(f, v, values, select)
+[etype_Rf1,emax_Rf1,a_Rf1] = MCDeg4(f(ix0),E1(ix0),Rf1_m, [1 1 1 0 0 1 0 0 0]);
+printf("%s(f,v)= %+g %+g*f %+g*v %+g*f^2 %+g*f*v %+g*v^2 %+g*f^2*v %+g*f*v^2 %+g*f^2*v^2 std=%f emax=%f\n",
+        "Rf1",a_Rf1(1),a_Rf1(2),a_Rf1(3),a_Rf1(4),a_Rf1(5),a_Rf1(6),a_Rf1(7),a_Rf1(8),a_Rf1(9),etype_Rf1,emax_Rf1);
+
+% Lm(f,v) parameters model with measures for I2==0
+[etype_Lm1,emax_Lm1,a_Lm1] = MCDeg4(f(ix0),E1(ix0),Lm1_m, [1 1 1 1 1 1 1 1 1]);
+printf("%s(f,v)= %+g %+g*f %+g*v %+g*f^2 %+g*f*v %+g*v^2 %+g*f^2*v %+g*f*v^2 %+g*f^2*v^2 std=%f emax=%f\n",
+        "Lm1",a_Lm1(1),a_Lm1(2),a_Lm1(3),a_Lm1(4),a_Lm1(5),a_Lm1(6),a_Lm1(7),a_Lm1(8),a_Lm1(9),etype_Lm1,emax_Lm1);
+
 
 % eval_poly(f,v,a)
-Lm1_e = eval_poly(f,E1,a_Lm1);
-Rf1_e = eval_poly(f,E1,a_Rf1);
+Lm1_e = eval_poly(f(ix0),E1(ix0),a_Lm1);
+Rf1_e = eval_poly(f(ix0),E1(ix0),a_Rf1);
+plot_estimated_param(f(ix0),E1(ix0),Rf1_m,Rf1_e,"Rf1");
+plot_estimated_param(f(ix0),E1(ix0),Lm1_m,Lm1_e,"Lm1");
+
+%}
+
+%{
 % eval_Zm(Rf,Lm,f)
 Zm1_e = eval_Zm(Rf1_e,Lm1_e,f);
 % eval_I2(V1,I1,cos_ui,R1,Zm,m)
 I2ce = eval_I2(U1,I1,cos_ui,R1,Zm1_e,1/7);
 printf("f=%3d E1=%5.3f Zm_e=%07.6f Lm_e=%07.6f Rf_e=%07.6f Lm_m=%07.6f Rf_m=%07.6f I2_e=%07.4f I2_m=%07.4f\n",
         [f,E1,abs(Zm1_e),Lm1_e,Rf1_e,Lm1_m,Rf1_m,abs(I2ce),I2_m]');
+
+%}
 
 %{
 figure();

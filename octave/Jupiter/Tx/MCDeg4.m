@@ -19,6 +19,7 @@
 function [etype,emax,a] = MCDeg4(f, v, values, select)
   N = length (f);
   T = [ones(N, 1), f, v, f.^2, f.*v, v.^2, (f.^2).*v, f.*(v.^2), (f.^2).*(v.^2)];
+
   Z = T * diag(select); % select only chosen coefs/cols from T
   ## design matrix
   ZTZ = Z' * Z;
