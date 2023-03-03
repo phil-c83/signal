@@ -1,15 +1,20 @@
 
 
-def generate_and_sample(sig,fe_dac,fe_adc,adc_buf_size):
+def generate_and_sample(sig,fe_dac,fe_adc,adc_buf_size,dev_dac,dev_adc):
     import nidaqmx
     import nidaqmx.constants as nc
+    ao0 = '{}/{}'.format(dev_dac,"ao0")
+    ai0 = '{}/{}'.format(dev_adc,"ai0")
+    ai1 = '{}/{}'.format(dev_adc,"ai1")
+    ai2 = '{}/{}'.format(dev_adc,"ai2")
+
     
     with nidaqmx.Task() as task_dac, nidaqmx.Task() as task_adc:             
         # Select ADC/DAC channels
-        task_dac.ao_channels.add_ao_voltage_chan("Dev1/ao0") # Clamp output
-        task_adc.ai_channels.add_ai_voltage_chan("Dev2/ai0") # Measure I1
-        task_adc.ai_channels.add_ai_voltage_chan("Dev2/ai1") # Measure U1
-        task_adc.ai_channels.add_ai_voltage_chan("Dev2/ai2") # Measure I2
+        task_dac.ao_channels.add_ao_voltage_chan(ao0) # Clamp output
+        task_adc.ai_channels.add_ai_voltage_chan(ai0) # Measure I1
+        task_adc.ai_channels.add_ai_voltage_chan(ai1) # Measure U1
+        task_adc.ai_channels.add_ai_voltage_chan(ai2) # Measure I2
         # Configure sample clock DAC
         task_dac.timing.cfg_samp_clk_timing(fe_dac, sample_mode=nc.AcquisitionType.FINITE, samps_per_chan=int(len(sig)))
         # Configure sample clock ADC
@@ -70,7 +75,15 @@ if __name__ == '__main__':
                             help='vdac [0.1..1]',
                             type=check_vdac,
                             metavar='<dac_level>',
-                            default=0.1)                                                                                        
+                            default=0.1) 
+    parser.add_argument('--devdac',
+                            help='select output NI device',                             
+                            metavar='<dev>',
+                            required=True)  
+    parser.add_argument('--devadc',
+                            help='select input NI device',                             
+                            metavar='<dev>',
+                            required=True)                                                                                                                    
 
 
     args = parser.parse_args()
@@ -81,15 +94,15 @@ if __name__ == '__main__':
     fe_dac=args.fdac    
     vdac  = args.vdac    
 
-    print('fadc=%d fdac=%d vdac=%.1f' % 
-            (fe_adc,fe_dac,vdac)) 
+    print('devdac=%s devadc=%s fadc=%d fdac=%d vdac=%.1f' % 
+            (args.devdac,args.devadc,fe_adc,fe_dac,vdac)) 
     sig,Te = gen_sin(fe_dac,vdac,480,0,0.5*fe_dac)
 
     #fig,ax  = plt.subplots()
     #ax.plot(Te,sig)       
     #plt.show()       
 
-    I1,U1,I2 = generate_and_sample(sig,fe_dac,fe_adc,len(sig)-fe_adc*0.2)      
+    I1,U1,I2 = generate_and_sample(sig,fe_dac,fe_adc,len(sig)-fe_adc*0.2,args.devdac,args.devadc)      
 
     fig,(axI1,axU1,axI2)  = plt.subplots(3,1)
     Te = [float(k)/fe_adc for k in range(0,len(I1))]

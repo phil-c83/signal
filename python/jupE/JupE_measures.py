@@ -1,7 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import csv
+import time
 import MCsinus as mc
+
 
 def gen_sinus(Fe,A,f1,phi,nsamples):
     Te  = np.arange(0,nsamples/Fe,1/Fe)
