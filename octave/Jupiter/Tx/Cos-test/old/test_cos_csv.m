@@ -16,4 +16,4 @@ function [fname,fpath,Te,U1,I1,I2] = read_csv_UI()
 endfunction
 
 [fname,fpath,Te,U1,I1,I2] = read_csv_UI();
-Test_UI_cos(Te,480,U1,I1,[1 2 3 5 9],inf);
+Test_UI_cos(Te,480,U1,I1,1,inf);
