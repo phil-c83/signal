@@ -6,4 +6,4 @@ clear all;
   infname = glob(infpat);
   m = dlmread(infname{1},",",1,0);
   P10  = m(:,4);
-plot_2D(Fs,U1,R2*I2./(P1-P10),R2,"P2/(P1-P10)");
+plot_2D(Fs,U1,R2*I2.^2./(P1-P10),R2,"P2/(P1-P10)");
