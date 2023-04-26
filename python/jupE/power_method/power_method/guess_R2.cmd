@@ -1,0 +1,1 @@
+python guess_R2.py --vdac 0.5 --fs 600 --fname clamp_j_1678718483.815776.csv --devdac Dev2 --devadc Dev1

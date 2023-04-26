@@ -16,7 +16,6 @@ function [fname,fpath,f,U1,I1,P1,I2] = read_csv_measures()
   U1  = m(:,4);
   P1  = m(:,6);
   I2  = m(:,7);
-
 endfunction
 
 

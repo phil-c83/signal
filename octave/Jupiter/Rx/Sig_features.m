@@ -33,7 +33,7 @@
 %}
 
 % phase_correction(f) : phase to add for getting genuine signal
-function SigSetFeatures = Sig_features(s,FFT,Fe,SigSetFreqs,phase_correction,tol,dbg)
+function SigSetFeatures = Sig_features(s,FFT,Fe,SigSetFreqs,tol,dbg)
 
   [nFreqs,nSet] = size(SigSetFreqs);
   SigSetFeatures.nFreqs = nFreqs;
@@ -71,12 +71,12 @@ function SigSetFeatures = Sig_features(s,FFT,Fe,SigSetFreqs,phase_correction,tol
     FFT_arg_2f  = arg(FFT(FreqIdx(nFreqs+1:end)));
 
     % apply phase correction phiatan2=Sig_phase_atan2(phi)
-    FFT_arg_f_c   = FFT_arg_f  - phase_correction(FreqIdx(1:nFreqs));
-    FFT_arg_f_c   = Sig_phase_atan2(FFT_arg_f_c);
-    FFT_arg_2f_c  = FFT_arg_2f - phase_correction(FreqIdx(nFreqs+1:end));
-    FFT_arg_2f_c  = Sig_phase_atan2(FFT_arg_2f_c);
+    #FFT_arg_f_c   = FFT_arg_f  - phase_correction(FreqIdx(1:nFreqs));
+    #FFT_arg_f_c   = Sig_phase_atan2(FFT_arg_f_c);
+    #FFT_arg_2f_c  = FFT_arg_2f - phase_correction(FreqIdx(nFreqs+1:end));
+    #FFT_arg_2f_c  = Sig_phase_atan2(FFT_arg_2f_c);
 
-    [sens,gap,lag,phi,CFT_arg_2f]=Sig_sens(FFT_arg_f_c,FFT_arg_2f_c,
+    [sens,gap,lag,phi,CFT_arg_2f]=Sig_sens(FFT_arg_f,FFT_arg_2f,
                                            SigSetFeatures.SigSets(i).Freqs(1:nFreqs,1),
                                            Fe,T,T1,tol);
     SigSetFeatures.SigSets(i).Gap       = gap;
@@ -113,7 +113,7 @@ endfunction
 function Sig_print_SigSetFeatures(ssf)
   printf("SetFreqs : %7.1f %7.1f %7.1f %7.1f %7.1f %7.1f\n",ssf.Freqs);
   printf("FreqIdx  : %7d %7d %7d %7d %7d %7d\n",ssf.Idx);
-  printf("Powers   : %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f\n",ssf.Dsp);
+  printf("Powers   : %7.5f %7.5f %7.5f %7.5f %7.5f %7.5f\n",ssf.Dsp);
   printf("FreqSN   : %7.2f %7.2f %7.2f %7.2f %7.2f %7.2f\n",ssf.FreqSN);
   printf("OrderH0  : %7d %7d %7d\n",ssf.iSortH0);
   printf("OrderH1  : %7d %7d %7d\n",ssf.iSortH1);
@@ -121,7 +121,7 @@ function Sig_print_SigSetFeatures(ssf)
   printf("TimeLag  : %7.5f %7.5f %7.5f\n",ssf.Lag);
   printf("CFTGap   : %7.2f %7.2f %7.2f\n",ssf.Gap);
   printf("Sens     : %7d %7d %7d\n",ssf.Sens);
-  printf("SetPower : %7.3f\n\n",ssf.SetPower);
+  printf("SetPower : %7.5f\n\n",ssf.SetPower);
 endfunction
 
 

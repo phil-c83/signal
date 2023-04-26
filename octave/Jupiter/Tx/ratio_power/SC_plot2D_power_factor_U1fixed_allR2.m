@@ -18,7 +18,7 @@ fnames = glob(fpat);
 figure();
 for k=1:size(fnames)(1)
   [Fs,U1,I1,P1,S1,R2]= csv_U1fixed(fnames{k},U1min,U1max);
-  plot(Fs,P10./P1,[";R2=" num2str(R2) ";"]);
+  plot(Fs,(P1-P10)./(S1-S10),[";R2=" num2str(R2) ";"]);
   hold on;
 endfor
-title("P10/P1 for all R2");
+title("(P1-P0)/(S1-S0) for all R2");
