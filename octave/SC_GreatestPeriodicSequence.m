@@ -1,0 +1,11 @@
+clear all;
+close all;
+Fe=1000;
+Fs=50.5;
+N=115;
+S=sin(2*pi*Fs/Fe*(0:N-1)-pi/3)+randn(1,N)*0.05;
+figure();
+plot(S);
+Sp=GreatestPeriodicSequence(S);
+figure();
+plot(Sp);

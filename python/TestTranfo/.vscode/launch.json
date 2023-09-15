@@ -1,0 +1,29 @@
+{
+    
+    "version": "0.2.0",
+    "configurations": [  
+        {
+            "name": "Python: Current File dry",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/GenTri.py",            
+            "console": "integratedTerminal"
+        },      
+        {
+            "name": "Python: Current File dry",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/GenTri.py",
+            "args": ["--dry"],            
+            "console": "integratedTerminal"
+        },          
+        {
+             "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/GenTri.py",
+            "args": ["--fs 50","--vdac 0.5 --fadc 5000"],            
+            "console": "integratedTerminal"
+        }
+    ]
+}

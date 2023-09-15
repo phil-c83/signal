@@ -6,10 +6,18 @@ clear all;
 
 a = R2(1)*(Pa(:,1)-Pa(:,end));
 ma= median(a);
+
 figure();
 for k=1:numel(R2)
   R2str = [";R2=" num2str(R2(k)) ";"];
   plot(T,Pa(:,k),R2str);
+  hold on;
+endfor
+
+figure();
+for k=1:numel(R2)-1
+  R2str = [";R2=" num2str(R2(k)) ";"];
+  plot(T,Pa(:,k)-Pa(:,end),R2str);
   hold on;
 endfor
 
@@ -35,7 +43,7 @@ for k=1:numel(R2)
   hold on;
 endfor
 #}
-
+#{
 figure();
 for k=1:numel(R2)-1
   D = 1./(Pa(:,k)-Pa(:,end)-a1*T);
@@ -54,3 +62,28 @@ for k=1:numel(R2)-1
   hold on;
 endfor
 
+figure();
+for k=1:numel(R2)-1
+  D = 1./(Pa(:,k)-Pa(:,end));
+  R= ma*D;
+  Rstr = [";R2=" num2str(R2(k)) ";"];
+  plot(T,R,Rstr);
+  hold on;
+endfor
+figure();
+for k=1:numel(R2)-1
+  D = 1./(Pa(:,k)-Pa(:,end));
+  R= ma*D*1.2;
+  Rstr = [";R2=" num2str(R2(k)) ";"];
+  plot(T,R,Rstr);
+  hold on;
+endfor
+figure();
+for k=1:numel(R2)-1
+  D = 1./(Pa(:,k)-Pa(:,end));
+  R= ma*D*1.3;
+  Rstr = [";R2=" num2str(R2(k)) ";"];
+  plot(T,R,Rstr);
+  hold on;
+endfor
+#}

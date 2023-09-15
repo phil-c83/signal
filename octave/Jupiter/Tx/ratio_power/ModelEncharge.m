@@ -17,12 +17,27 @@ function [a,b]=hyperbole(x1,x2,y1,y2)
   b = y1 - a/x1;
 endfunction
 
-[a11,b11]=hyperbole(R2(2),R2(end-1),P11(2),P11(end-1))
-[a21,b21]=hyperbole(R2(3),R2(end-2),P11(3),P11(end-2))
-[a31,b31]=hyperbole(R2(4),R2(end-3),P11(4),P11(end-3))
-[a41,b41]=hyperbole(R2(1),R2(end),P11(1),P11(end))
+[a11,b11]=hyperbole(R2(2),R2(end-1),P11(2),P11(end-1));
+[a21,b21]=hyperbole(R2(3),R2(end-2),P11(3),P11(end-2));
+[a31,b31]=hyperbole(R2(4),R2(end-3),P11(4),P11(end-3));
+[a41,b41]=hyperbole(R2(1),R2(end),P11(1),P11(end));
+
 figure;
-plot(R2,P11,R2,a11*1./R2+b11,R2,a21*1./R2+b21,R2,a31*1./R2+b31,R2,a41*1./R2+b41);
+#plot(R2,P11,R2,a11*1./R2+b11,R2,a21*1./R2+b21,R2,a31*1./R2+b31,R2,a41*1./R2+b41);
+plot(R2(2:end),P11(2:end),";mesures;",R2(2:end),a11*1./R2(2:end)+b11,";modele;");
+title("Clamp 1");
+
+figure;
+#plot(R2,P11,R2,a11*1./R2+b11,R2,a21*1./R2+b21,R2,a31*1./R2+b31,R2,a41*1./R2+b41);
+plot(R2(2:end),P12(2:end),";mesures;",R2(2:end),a21*1./R2(2:end)+b21,";modele;");
+title("Clamp 2");
+
+figure;
+#plot(R2,P11,R2,a11*1./R2+b11,R2,a21*1./R2+b21,R2,a31*1./R2+b31,R2,a41*1./R2+b41);
+plot(R2(2:end),P13(2:end),";mesures;",R2(2:end),a31*1./R2(2:end)+b31,";modele;");
+title("Clamp 3");
+
+
 
 %{
 [a12,b12]=hyperbole(R2(2),R2(end-1),P12(2),P12(end-1))

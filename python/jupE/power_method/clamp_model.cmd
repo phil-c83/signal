@@ -1,1 +1,0 @@
-python .\clamp_model.py --fs 410 1540 --vdac 0.2 1 --devdac dev2 --devadc dev1 --R2 0.1 --dir ./clamp_v -s
