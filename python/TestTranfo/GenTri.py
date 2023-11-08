@@ -207,6 +207,48 @@ def cb_Gen_D_Meas_Y(fe,fsig,measures,chan_ai,rms_Vg,rms_Vm,count):
     print("")
 
 
+def cb_Gen_Y_Meas_I(fe,fsig,measures,chan_ai,rms_Vg,rms_Vm,count):
+# Generator (LV side) , Y Measures for current
+# first three channels for generator voltage on LV side ie chan_ai[0:2]
+# last three channels for voltage on LV side for current measure ie chan_ai[3:]
+# fe      : sample freq
+# fsig    : signal freq
+# measure : list of list of samples for each channel
+# chan_ai : list of input channels str 
+    
+    # generator 
+    Vg = [np.array(l) for l in measures[0:3]]   
+    Vg_rms = [np.sqrt(np.cov([x,x],bias=True)[0,0]) for x in Vg]
+    
+    # voltage drop 
+    Vi = [np.array(l) for l in measures[3:6]]   
+    Vg_Vi = [Vg[k]-Vi[k] for k in range(0,3)]     
+    Vg_Vi_rms = [np.sqrt(np.cov([x,x],bias=True)[0,0]) for x in Vg_Vi]  
+
+    # relative phase between generator and voltage drop    
+    phase = [np.arccos(np.cov([Vg[k],Vg_Vi[k]])[0][1]/(Vg_rms[k]*Vg_Vi_rms[k]))
+                    for k in range(0,3)]
+
+    # sum all rms values for average at the end
+    for i,v in enumerate(Vg_rms):
+        rms_Vg[i] += v
+
+    for i,v in enumerate(Vg_Vi_rms):
+        rms_Vm[i] += v 
+
+    count[0] += 1     
+    
+    v_rms = Vg_rms
+    v_rms.extend(Vg_Vi_rms)
+    data_g = ' '.join('{}={:06.3f}'.format(c,m) 
+                for (c,m) in zip(chan_ai[0:3],v_rms[0:3]))
+    data_v = ' '.join('{}={:06.3f}/{:04.3f}'.format(c,m,a) 
+                for (c,m,a) in zip(chan_ai[3:6],v_rms[3:6],phase[0:3]) )
+    
+    print(data_g + " " + data_v)
+    print("")
+
+
 def NI_generate_and_sample(dev_dac,dev_adc,fe_dac,fs,fe_adc,
                            chans_ao,chans_ai,A,Ns,cb_meas):
     # dev_dac : str for dac device
@@ -237,6 +279,7 @@ def NI_generate_and_sample(dev_dac,dev_adc,fe_dac,fs,fe_adc,
             sample_mode=nc.AcquisitionType.CONTINUOUS,
             samps_per_chan=Ns)
         Te,sig = gen_polyphased_sin(fs,fe_dac,A,Ns,len(chans_ao),0) 
+        
         task_dac.write(sig)
         task_dac.start() 
 
@@ -442,7 +485,10 @@ if __name__ == '__main__':
     else:
         NI_generate_and_sample(devdac,devadc,fdac,fsig,fadc,["ao0","ao1","ao2"],
                                ["ai0","ai1","ai2","ai3","ai4","ai5"],
-                               vdac,Nsamples,cb_Gen_Y_Meas_D)
+                               vdac,Nsamples,cb_Gen_Y_Meas_I)
+        # NI_generate_and_sample(devdac,devadc,fdac,fsig,fadc,["ao0","ao1","ao2"],
+        #                        ["ai0","ai1","ai2","ai3","ai4","ai5"],
+        #                        vdac,Nsamples,cb_Gen_Y_Meas_D)
         # NI_generate_and_sample(devdac,devadc,fdac,fsig,fadc,["ao0","ao1","ao2"],
         #                        ["ai0","ai1","ai2","ai3","ai4","ai5"],
         #                        vdac,Nsamples,cb_Gen_D_Meas_Y)                               
