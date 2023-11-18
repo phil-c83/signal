@@ -1,0 +1,11 @@
+START_JSON
+{"tutu":13}
+STOP_JSON
+
+START_JSON
+{
+    "toto":12,
+    "tutu":13
+}
+STOP_JSON
+
