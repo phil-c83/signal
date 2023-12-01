@@ -1,0 +1,30 @@
+* C:\users\phil\Documents\Made\git-prj\signal\spice\JupE\Tx\Regul_I2.asc
+R1 E1 V1 {R1}
+R2 E1 N001 {Rs}
+L1 N001 0 {Ls}
+L2 E1 0 {Lm}
+R3 E1 0 {Rm}
+B1 V1 0 V=Vgen(A,Fs)
+.PARAM A=2.54 Fs=500 m=1/7
+.PARAM R1=0.38
+.tran 0.1
+.func Vgen(A,f)={A*sin(2*pi*f*time)}
+.MEAS Rmv PARAM Rm 
+.MEAS Lmv PARAM Lm
+.MEAS Rsv PARAM Rs
+.MEAS Lsv PARAM Ls
+.MEAS I2v RMS I(L1)/m
+.MEAS Igen RMS I(B1) 
+.MEAS Vgen RMS V(V1)
+.MEAS Zload PARAM Vgen/Igen
+.MEAS V1v PARAM V1_c
+.MEAS Zeqv PARAM Zeq
+.INCLUDE func.txt
+.PARAM ModZm=0.81 ArgZm=0.4
+.PARAM ModZs=0.035 ArgZs=1.2
+.PARAM Rm=ModZm/cos(ArgZm)-R1 Lm=ModZm/(2*pi*Fs*sin(ArgZm))
+.PARAM Rs=ModZs*cos(ArgZs) Ls=ModZs*sin(ArgZs)/(2*pi*Fs)
+.PARAM V1_c=eval_V1(Rs,Ls,Rm,Lm,R1,m,Fs,0.5)
+.PARAM Zeq=ModZeq(Rs,2*pi*Fs*Ls,Rm,2*pi*Fs*Lm,R1,m)
+.backanno
+.end

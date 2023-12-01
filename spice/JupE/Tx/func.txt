@@ -1,0 +1,47 @@
+***** helper functions
+
+* real and imaginary part for complex product z1*z2
+.func ReMul(r1,x1,r2,x2)={r1*r2 - x1*x2}
+.func ImMul(r1,x1,r2,x2)={r1*x2 + r2*x1}
+
+* real and imaginary part for complex product z1*z2*z3
+.func ReMul3(r1,x1,r2,x2,r3,x3)={ReMul(r1,x1,r2,x2)*r3 - ImMul(r1,x1,r2,x2)*x3}
+.func ImMul3(r1,x1,r2,x2,r3,x3)={ReMul(r1,x1,r2,x2)*x3 + ImMul(r1,r2,x1,x2)*r3}
+
+* real and imaginary part for complex division z1/z2  
+.func ReDiv(r1,x1,r2,x2)={ReMul2(r1,x1,r2,-x2)/sqMod(r2,x2)}
+.func ImDiv(r1,x1,r2,x2=={ImMul2(r1,x1,r2,-x2)/sqMod(r2,x2)}
+
+* modulus
+.func sqMod(r1,x1)={r1**2 + x1**2}
+.func Mod(r1,x1)={sqrt(sqMod(r1,x1))}
+
+* modulus for sums z1+z2, z1+z2+z3 
+.func sqModSum(r1,x1,r2,x2)={sqMod(r1,x1) + sqMod(r2,x2) + 2*ReMul(r1,x1,r2,-x2)}
+.func ModSum(r1,x1,r2,x2)={sqrt(sqModSum(r1,x1,r2,x2))}
+
+* [Z1+Z2|^2 = |Z1|^2 + |Z2|^2 + 2*Re(Z1*conj(Z2))
+* |Z1+Z2+Z3|^2 = [Z1+Z2|^2 + |Z3|^2 + 2*Re(Z1*conj(Z3)) + 2*Re(Z2*conj(Z3))
+* Z1*conj(Z2) + Z2*conj(Z1) = 2*Re(Z1*conj(Z2))
+.func sqModSum3(r1,x1,r2,x2,r3,x3)={sqModSum(r1,x1,r2,x2) + sqMod(r3,x3) + 2*ReMul(r1,x1,r3,-x3) + 2*ReMul(r2,x2,r3,-x3)}
+.func ModSum3(r1,x1,r2,x2,r3,x3)={sqrt(sqModSum3(r1,x1,r2,x2,r3,x3))}
+
+* modulus for product z1*z2
+.func sqModMul(r1,x1,r2,x2)={ReMul(r1,x1,r2,x2)**2 + ImMul(r1,x1,r2,x2)**2}
+.func ModMul(r1,x1,r2,x2)={sqrt(sqModMul(r1,x1,r2,x2))}
+
+* conjugate
+.func ReConj(r1,x1)={r1}
+.func ImConj(r1,x1)={-x1}
+
+* inverse
+.func ReInv(r1,x1)={r1/sqMod(r1,x1)}
+.func ImInv(r1,x1)={-x1/sqMod(r1,x1)}
+
+* expression for V1 = Zeq * I2 = (Zs*Z1 + Zs*Zm + m^2*Z1*Zm)/(m*Zm) * I2 
+* Zeq = (Z1*Zs/(m*Zm) + m*Z1 + Zs/m) * I2
+*|Zeq| = |Z1*Zs/(mZm) + m*Z1 + Zs/m|
+
+.func ModZeq(Rs,Xs,Rm,Xm,R1,m)={ModSum3(ReMul3(R1,0,Rs,Xs,ReInv(m*Rm,m*Xm),ImInv(m*Rm,m*Xm)),ImMul3(R1,0,Rs,Xs,ReInv(m*Rm,m*Xm),ImInv(m*Rm,m*Xm)),m*R1,0,Rs/m,Xm/m)}
+
+.func eval_V1(Rs,Ls,Rm,Lm,R1,m,Fs,I2)={ModZeq(Rs,2*pi*Fs*Ls,Rm,2*pi*Fs*Lm,R1,m)*I2}

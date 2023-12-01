@@ -1,0 +1,4 @@
+.MEAS Igen RMS I(B1)
+.MEAS Vgen RMS V(V1)
+.MEAS Zload PARAM Vgen/Igen 
+

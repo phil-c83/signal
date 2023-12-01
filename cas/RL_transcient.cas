@@ -1,0 +1,3 @@
+j(t):= E/R*(2*exp(-R/L*(t-P/2))-exp(-R/L*(t-P))-exp(-R/L*t))-E/R*(2*exp(R/L*P/2)+exp(R/L*P)+1);
+f:=subst(j(t),[R=1e-3,L=1e-3,P=100e-6,E=6]);
+#plot(f,t=0..500e-6);

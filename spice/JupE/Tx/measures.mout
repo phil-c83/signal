@@ -1,0 +1,4 @@
+* C:\users\phil\Documents\Made\git-prj\signal\spice\JupE\Tx\measures.mout
+Igen: RMS(I(B1))=0.843298 FROM 0 TO 0.1
+Vgen: RMS(V(V1))=0.688223 FROM 0 TO 0.1
+Zload: Vgen/Igen=0.816108
