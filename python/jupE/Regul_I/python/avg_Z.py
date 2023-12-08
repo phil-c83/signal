@@ -5,17 +5,17 @@ import numpy as np
 import cmath as cx
 
 class EvalZ():
+    # clamp model : Z1 + (Zs/m^2 // Zm)
+    # Z1 : wire + measure resistor + other things (typically R1) supposed known
+    # Zm : self + loss clamp impedance  
+    # Zs : impedance connected to secondary 
+    # Z0 : impedance without load
+    # Z  : impedance with load ie Zs != Inf
+    
     def __init__(self):
         self.avg_Z=0
         self.count=0
-        self.list_Z=[]        
-
-    # nomalize to normal unit ie volt or ampere
-    def I_pt_to_A(self,Ipt):
-        return(((Ipt*((3.3)/(4096)))/(30/10))/(0.11))
-
-    def U_pt_to_V(self,Upt):
-        return((Upt*((3.3)/(4096)))/(15/33))
+        self.list_Z=[]           
 
     def rms_U_I_Phi(self,U,I):
         Urms = np.sqrt(np.cov([U,U],bias=True)[0,0])
@@ -29,66 +29,59 @@ class EvalZ():
         Phi  = np.arccos(np.cov([U,I],bias=True)[0,1]/(Urms*Irms))
         return (Urms,Irms,Phi)  
 
-    def Compute_Z(self,R0,Urms,Irms,Phi):
-        Ic=Irms*cx.exp(1j*Phi)
-        #Z = Urms/Ic - R0
+    def Compute_Z(self,Urms,Irms,Phi):
+        Ic=Irms*cx.exp(1j*(-Phi)) # Ic en retard (inductif)        
         Z = Urms/Ic
         return Z  
-
-    def trace(self,U,I,phi,Z):
-        str_trace = ' '.join('{}:{:02.3f}'.format(s,v) 
-            for (s,v) in zip(["\tUrms","Irms","Phi","|Z|"],[U,I,phi,abs(Z)]))            
-        print(str_trace)  
-
-    def process_dir(self,dir):        
-        #print('enter: ' + dir)
-        for folderName, subfolders, filenames in os.walk(dir):                          
-            for filename in filenames:
-                fname = os.path.join(folderName,filename)
-                #print('file: ' + fname)
-                self.process_file(fname)                       
     
-    def process_file(self,file):
-        (s,ext)=os.path.splitext(file)        
-        if ext == ".json":
-            mes = ej.extract_json(file)
-            Ibuf  = mes[0][0]
-            Ubuf  = mes[0][1]
-            ln=len(Ibuf)//32*32 # integral number of periods
-            Ibuf  = Ibuf[:ln]
-            Ubuf  = Ubuf[:ln]
-            # normalize measures
-            Ibuf_n = [self.I_pt_to_A(i) for i in Ibuf]
-            Ubuf_n = [self.U_pt_to_V(u) for u in Ubuf] 
-            (Urms,Irms,Phi)=self.rms_U_I_Phi(Ubuf_n,Ibuf_n) 
-            Z = self.Compute_Z(self.R0,Urms,Irms,Phi)
-            self.list_Z.append(Z)
-            self.count += 1
-            self.trace(Urms,Irms,Phi,Z)
+    def Compute_Z2(self,Z,Z0,Z1): 
+        # Z =  Z1 + (Z2 // (Z0-Z1)) 
+        # --> Z2 = (Z0-Z1)*(Z1-Z)/(Z-Z0)  
+        Z2 = (Z0-Z1)*(Z1-Z)/(Z-Z0)
+        return Z2
 
-    def stat(self):
+    def str_trace_Z(self,U,I,phi,Z):
+        str_trace = ' '.join('{}:{:02.3f}'.format(s,v) 
+            for (s,v) in zip(["\tUrms","Irms","Phi"],[U,I,phi]))
+        str_trace = str_trace + " " + self.Z2str(Z,"Z") 
+        return str_trace       
+    
+    def str_trace_Z2(self,U,I,phi,Z,Z0,Z2):
+        return (self.str_trace_Z(U,I,phi,Z) + " " +
+               self.Z2str(Z0,"Z0") + " " + self.Z2str(Z2,"Z2"))
+
+    def avgZ2str(self,name):
+        return self.Z2str(self.avg_Z,name)
+
+    def Z2str(self,Z,name):
+        Z_pol = cx.polar(Z)
+        return '{}:{:02.3f}/{:02.3f}'.format(name,Z_pol[0],Z_pol[1])        
+
+    
+    def process_measure(self,channel,coef_u,coef_i):           
+        Ibuf  = channel.buff_I
+        Ubuf  = channel.buff_U
+        ln=len(Ibuf)//32*32 # integral number of periods
+        Ibuf  = Ibuf[:ln]
+        Ubuf  = Ubuf[:ln]
+        # normalize measures
+        Ibuf_n = [i*coef_i for i in Ibuf]
+        Ubuf_n = [u*coef_u for u in Ubuf] 
+        (Urms,Irms,Phi)=self.rms_U_I_Phi(Ubuf_n,Ibuf_n) 
+        Z = self.Compute_Z(Urms,Irms,Phi)
+        self.list_Z.append(Z)
+        self.count += 1        
+        return (Urms,Irms,Phi,Z)
+
+    def avg_z(self):
         if self.count:
             for i,v in enumerate(self.list_Z):
                 self.avg_Z += v
             self.avg_Z /= self.count
-            print('{}:{:02.3f}'.format("avg_Z",abs(self.avg_Z)))
-
-
-if __name__ == '__main__':    
-    
-    #print(sys.argv)
-    nargs = len(sys.argv)-1
-    
-    EZ = EvalZ()
-    
-    for name in sys.argv[1:]:
-        if os.path.isfile(name):            
-            EZ.process_file(name)
-        elif os.path.isdir(name):
-            EZ.process_dir(name)                    
+            return self.avg_Z
             
-    EZ.stat()
-    
+
+
 
 
 

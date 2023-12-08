@@ -1,4 +1,4 @@
-***** helper functions
+***** helper for complex calculus
 
 * real and imaginary part for complex product z1*z2
 .func ReMul(r1,x1,r2,x2)={r1*r2 - x1*x2}
@@ -20,8 +20,8 @@
 .func sqModSum(r1,x1,r2,x2)={sqMod(r1,x1) + sqMod(r2,x2) + 2*ReMul(r1,x1,r2,-x2)}
 .func ModSum(r1,x1,r2,x2)={sqrt(sqModSum(r1,x1,r2,x2))}
 
-* [Z1+Z2|^2 = |Z1|^2 + |Z2|^2 + 2*Re(Z1*conj(Z2))
-* |Z1+Z2+Z3|^2 = [Z1+Z2|^2 + |Z3|^2 + 2*Re(Z1*conj(Z3)) + 2*Re(Z2*conj(Z3))
+* |Z1+Z2|^2 = |Z1|^2 + |Z2|^2 + 2*Re(Z1*conj(Z2))
+* |Z1+Z2+Z3|^2 = |Z1+Z2|^2 + |Z3|^2 + 2*Re(Z1*conj(Z3)) + 2*Re(Z2*conj(Z3))
 * Z1*conj(Z2) + Z2*conj(Z1) = 2*Re(Z1*conj(Z2))
 .func sqModSum3(r1,x1,r2,x2,r3,x3)={sqModSum(r1,x1,r2,x2) + sqMod(r3,x3) + 2*ReMul(r1,x1,r3,-x3) + 2*ReMul(r2,x2,r3,-x3)}
 .func ModSum3(r1,x1,r2,x2,r3,x3)={sqrt(sqModSum3(r1,x1,r2,x2,r3,x3))}
@@ -38,10 +38,27 @@
 .func ReInv(r1,x1)={r1/sqMod(r1,x1)}
 .func ImInv(r1,x1)={-x1/sqMod(r1,x1)}
 
-* expression for V1 = Zeq * I2 = (Zs*Z1 + Zs*Zm + m^2*Z1*Zm)/(m*Zm) * I2 
-* Zeq = (Z1*Zs/(m*Zm) + m*Z1 + Zs/m) * I2
-*|Zeq| = |Z1*Zs/(mZm) + m*Z1 + Zs/m|
+* polar/cartesian conversion
+.func C2Pmod(re,im)={sqrt(re**2+im**2)}
+.func C2Parg(re,im)={atan(im/re)}
+.func P2Cre(m,a)={m*cos(a)}
+.func P2Cim(m,a)={m*sin(a)}
 
-.func ModZeq(Rs,Xs,Rm,Xm,R1,m)={ModSum3(ReMul3(R1,0,Rs,Xs,ReInv(m*Rm,m*Xm),ImInv(m*Rm,m*Xm)),ImMul3(R1,0,Rs,Xs,ReInv(m*Rm,m*Xm),ImInv(m*Rm,m*Xm)),m*R1,0,Rs/m,Xm/m)}
+*********  helper functions for Z2 eval (ie secondary impedance bring back to primary) 
+* Z = R1 + Z2 // Zp  -> Z2 = Zp*(R1-Z)/(Z-(Zp+R1))
+.func DenumZ2(Rp,Xp,R,X,R1)={(R-Rp-R1)**2 + (X-Xp)**2}
+.func ReZ2(Rp,Xp,R,X,R1)={((Rp*R1-Rp*R+Xp*X)*(R-Rp-R1) + (Xp*R1-Xp*R-X*Rp)*(X-Xp))/DenumZ2(Rp,Xp,R,X,R1)}
+.func ImZ2(Rp,Xp,R,X,R1)={((Rp*R1-Rp*R+Xp*X)*(Xp-X) + (Xp*R1-Xp*R-X*Rp)*(R-Rp-R1))/DenumZ2(Rp,Xp,R,X,R1)}
+.func Eval_R2(Rp,Lp,ModZ,ArgZ,R1,Fs)={ReZ2(Rp,2*pi*Fs*Lp,ModZ*cos(ArgZ),ModZ*sin(ArgZ),R1)}
+.func Eval_L2(Rp,Lp,ModZ,ArgZ,R1,Fs)={ImZ2(Rp,2*pi*Fs*Lp,ModZ*cos(ArgZ),ModZ*sin(ArgZ),R1)/(2*pi*Fs)}
 
-.func eval_V1(Rs,Ls,Rm,Lm,R1,m,Fs,I2)={ModZeq(Rs,2*pi*Fs*Ls,Rm,2*pi*Fs*Lm,R1,m)*I2}
+********* helper functions for Zp (ie clamp impedance Rp//Lp)
+.func Eval_Rp(ModZ0,ArgZ0,R1,Fs)={(ModZ0**2+R1**2-2*ModZ0*R1*cos(ArgZ0))/(ModZ0*cos(ArgZ0)-R1)}
+.func Eval_Lp(ModZ0,ArgZ0,R1,Fs)={(ModZ0**2+R1**2-2*ModZ0*R1*cos(ArgZ0))/(ModZ0*sin(ArgZ0)*2*pi*Fs)}
+
+
+* expression for V1 = Zeq * I2 = (Z1*Z2/Zp + Z1 + Z2) * I2 
+*|Zeq| = |Z1*Z2/Zp + Z1 + Z2|
+
+.func ModZeq(R2,X2,Rp,Xp,R1)={ModSum3(ReMul3(R1,0,R2,X2,ReInv(Rp,Xp),ImInv(Rp,Xp)),ImMul3(R1,0,R2,X2,ReInv(Rp,Xp),ImInv(Rp,Xp)),R1,0,R2,X2)}
+.func eval_V1(R2,L2,Rp,Lp,R1,Fs,I2)={ModZeq(R2,2*pi*Fs*L2,Rp,2*pi*Fs*Lp,R1)*I2}
