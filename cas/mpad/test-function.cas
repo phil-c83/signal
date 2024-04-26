@@ -1,0 +1,21 @@
+# reference test function D=]-1,1[ f := exp(x^2/(x2-1))
+Exr:= unapply( piecewise(x>-1 && x<1,exp(x^2/(x^2-1)),0),x):;
+
+# causal test function D=]0,1[
+Exn:= unapply(Exr(2*x-1),x):;
+
+# causal test function D=]0,Ton[
+Ex:= unapply(Exr(2*x/Ton-1),x,Ton):;
+
+# causal periodic test function for chopping another one
+Exp:=unapply(Exr(2*x/Ton-1 - floor(x/P)*P*2/Ton),x,Ton,P):;
+
+# sinus with one alternation on two
+# plot(Exp(x,1/50,2/50)*sin(2*pi*50*x),x=0..0.1)
+
+
+
+# hamming window  D=[0,T] Ham := 0.54 - 0.46*cos(2*pi*x/T)
+ham := unapply(0.54 - 0.46*cos(2*pi*x/T),x,T):;
+
+# plot([ham(x,1),Exn(x)],x=0..1)

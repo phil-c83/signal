@@ -1,0 +1,34 @@
+.func square_base(x,T) { u(x)-u(x-T/2) }
+.func square(x,T) { square_base(x - floor(x/T)*T,T) }
+
+****  0 < x < Ton , gate(x,Ton) = 1 , 0 otherwise
+.func gate(x,Ton) { if(x+1/2,if(-x+Ton+1/2,1,0),0) }
+.func square_chopper(x,Ton,P) {gate(x - floor(x/P)*P,Ton)}
+
+**** -1 < x < 1 => test_func(x)=exp(x^2/(x^2-1)) , 0 otherwise
+.func test_func(x) { if((x+2)/2,if(-x+3/2,exp(x**2/(x**2-1)) ,0),0) }
+.func smooth_chopper(x,Ton,P) {test_func(2*x/Ton-1 -floor(x/P)*P*2/Ton)}
+
+
+**** sig_rx(x,Fm,Fch,Am,Ar); current signal sourced by mpad rx
+**** x: time, Fm: main power frequency, Fch: chopper frequency 
+**** Ar: sourced rx current intensity
+.func sig_rx(x,Fm,Fch,Ar) { Ar*sin(2*pi*Fm*x) * square_chopper(x,1/(2*Fch),1/Fch) }
+
+**** sig_rx_smooth(x,Fm,Fch,Am,Ar); smoothed current signal sourced by mpad rx
+**** x: time, Fm: main power frequency, Fch: chopper frequency 
+**** Ar: sourced rx current intensity
+.func sig_rx_smooth(x,Fm,Fch,Ar) { Ar*sin(2*pi*Fm*x) * smooth_chopper(x,1/Fm,1/Fch) }
+
+**** sig_coil(x,Fm,Fch,Am,Ar,M) : output signal on rogowski coil ie Vcoil = M * di/dt
+**** x: time, Fm: main power frequency, Fch: chopper frequency 
+**** Am: Feeder's current intensity, Ar: sourced rx current intensity
+**** M: Mutual inductance
+.func sig_coil(x,Fm,Fch,Am,Ar,M) {M*ddt(sig_rx(x,Fm,Fch,Ar)+Am*sin(2*pi*Fm*x))}
+
+
+**** lin_sweep(x,f0,f1,p) : linear sweep from f0 to f1 over time p
+**** x: time, f0: start frequency, f1: stop frequency, p: sweep period
+.func f_lin(x,f1,f2,p) {(f2-f1)/p*x+f1}
+.func lin_sweep(x,f1,f2,p) {sin(2*pi*f_lin(x,f1,f2,p)*x)}
+

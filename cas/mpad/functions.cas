@@ -1,0 +1,16 @@
+// gate function width 1 around  0
+ugate(x) := Heaviside(x + 1/2) - Heaviside(x - 1/2):;
+
+// gate function with width l centered around r
+// num -> num -> (num -> num)
+// example:  plot(gate(pi,pi/2)(x)*sin(x),x=-2*pi..2*pi)
+gate(x,l,r) :=  unapply(ugate((x-r)/l),x):;
+
+
+// triangle function width 1 around 0 
+// -1/2 <= x <= 1/2  
+utri(x) := 1-abs(2*x):;
+
+
+
+

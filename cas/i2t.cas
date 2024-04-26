@@ -1,0 +1,5 @@
+i2t(A,R,w,t) := int(A/R*sin(w*t)^2,t);
+i2t_n(t) := i2t(230*sqrt(2)-13,0.1,2*pi*50,t);
+t_blow := fsolve(i2t_n(t)-4.2,t=0..20e-3)
+Imax(A,R,w,t) := A/R*sin(w*t); 
+Im := Imax(230*sqrt(2)-13,0.1,2*pi*50,t_blow[0])

@@ -1,0 +1,25 @@
+*** signal pour jupiter E
+
+*** coeff for signal fourier serie
+.func coef_An(A,D,n)={A/(pi*n)*1/(1-D)*sin(2*pi*n*D)}
+.func coef_Bn(A,D,n)={A/(pi*n)*1/(1-D)*(1-cos(2*pi*n*D))}
+
+* signal for harmonique n
+.func sig_Hn(t,Ts,A,D,n)={coef_An(A,D,n)*cos(2*pi*n*t/Ts)+coef_Bn(A,D,n)*sin(2*pi*n*t/Ts)}
+
+* compound Jupiter E signal for 1 clamp
+.func sig_jup(t,T1,T2,A,D)={sig_Hn(t,T1,A,D,1)+sig_Hn(t,T1,A,D,2)-sig_Hn(t,T2,A,D,1)-sig_Hn(t,T2,A,D,2)}
+ 
+*** |Sig| = A * sqrt(2)/(pi*(1-D)) * sqrt(1-cos(2*pi*D)+1/4*(1-cos(4*pi*D))) 
+.func Eval_A(Srms,D)={Srms*pi*(1-D)/(sqrt(2)*sqrt(1-cos(2*pi*D)+(1-cos(4*pi*D))/4))} 
+
+*** helper functions for compound signal
+** |C_n+1|^2 / |C_n|^2
+.func R_sq_Cn(n,D)={(n**2*(1-cos(2*pi*(n+1)*D)))/((n+1)**2*(1-cos(2*pi*n*D)))}	
+
+** compound V1 modulus
+.func cpd_ModV1(I2rms,D,Zf1,Z2f1,Zf2,Z2f2)={I2rms/(sqrt(2*(1+R_sq_Cn(1,D)))) * sqrt((Zf1**2+Zf2**2)+R_sq_Cn(1,D)*(Z2f1**2+Z2f2**2))}
+
+** eval Zeq ie R1*Z2/Zp+Z2+R1 @Fs -- ModZeq(R2,X2,Rp,Xp,R1)
+.func cpd_ModZeq(R2,L2,Rp,Lp,R1,Fs)={ModZeq(R2,2*pi*Fs*L2,ReZp(Rp,Lp,Fs),ImZp(Rp,Lp,Fs),R1)}
+.func Eval_cpd_ModV1(I2rms,D,R2,L2,Rp,Lp,R1,F1,F2)={cpd_ModV1(I2rms,D,cpd_ModZeq(R2,L2,Rp,Lp,R1,F1),cpd_ModZeq(R2,L2,Rp,Lp,R1,2*F1),cpd_ModZeq(R2,L2,Rp,Lp,R1,F2),cpd_ModZeq(R2,L2,Rp,Lp,R1,2*F2))}
