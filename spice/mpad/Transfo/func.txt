@@ -1,0 +1,1 @@
+.func CausalSin(t,freq,phase) { if(2*pi*freq*t+phase*pi/180+0.5,sin(2*pi*freq*t+phase*pi/180),0)}

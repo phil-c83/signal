@@ -1,0 +1,12 @@
+//sin_2pi(t):= ifte(((2*pi*50*t+pi/3)/(4*pi)) > 1/2, sin(2*pi*50*t+pi/3), 0);
+//sin_2pi(t):= sin(2*pi*50*t+pi/3);
+sin_2pi(t):= {
+	local theta;
+	theta := (2*pi*50*t+pi/3)/(4*pi);
+	
+	if theta > 1/2 then 
+		return sin(2*pi*50*t+pi/3);
+	else
+		return 0;
+	end
+};
