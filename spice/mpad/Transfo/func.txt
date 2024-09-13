@@ -1,1 +1,2 @@
 .func CausalSin(t,freq,phase) { if(2*pi*freq*t+phase*pi/180+0.5,sin(2*pi*freq*t+phase*pi/180),0)}
+.func Mutual(M,I1,I2) {-M*ddt(I(I1)+I(I2))}
