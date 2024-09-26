@@ -1,0 +1,1 @@
+.func causal_sin(u) {if(u+0.5,sin(u),0)}
