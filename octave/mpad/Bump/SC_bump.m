@@ -1,17 +1,27 @@
 clearvars;
-output_precision(16);
+addpath("../../fun");
+output_precision(7);
 
 dt = 20e-6;
 Fe = 1/dt;
-Ts = [-1/2,1/2];
-
-Te = (-Ts:1/Fe:Ts);
-s  = nbump(Te);
-plot(Te,s);
+n  = 5 ;
+[Tei,Teo] = remap_range([1e-3,2e-3],[-1/2,1/2],Fe);
 
 #{
+s  = Rect(Teo);
+plot(Tei,s);
 hold on;
-s  = Dbumpz(Te/Ts);
-plot(Te,s);
 #}
+
+s = bump(Teo) .* sin(2*pi*n*Teo);
+plot(Tei,s);
+hold on;
+
+Ds = diff(s) .* Fe;
+
+plot(Tei,[0,Ds]/10000);
+
+
+
+
 

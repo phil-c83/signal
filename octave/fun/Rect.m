@@ -1,6 +1,5 @@
 ## Copyright (C) 2024
 
-
 ## Author:  <phil@archlinux>
 ## Created: 2024-04-09
 
