@@ -1,1 +1,5 @@
-bump(x) := exp(-pi*x^2);
+bump(x) := when(x>=-1/2 && x<=1/2, exp(4)*exp( 1 / ((x+1/2)*(x-1/2))), 0 ); 
+
+Dbump(x) := -((x+1/2)+(x-1/2)) / ((x+1/2)*(x-1/2)) * bump(x);
+
+# plot([bump(x),Dbump(x)], x=-1..1)
