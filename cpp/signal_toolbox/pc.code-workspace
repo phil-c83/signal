@@ -1,0 +1,88 @@
+{
+	"folders": [
+		{
+			"name":"Tbox",
+			"path": "."
+		},
+		{
+			
+		},
+		
+	],
+	"settings": {
+		
+		"C_Cpp.default.includePath": [
+			"${workspaceFolder:Tbox}",
+			"${workspaceFolder:Tbox/signal}",			 
+		],
+
+		"C_Cpp.intelliSenseEngine": "default",
+		"C_Cpp.default.cStandard": "c99",
+		"C_Cpp.default.compilerPath":"gcc",
+		"C_Cpp.default.intelliSenseMode": "gcc-x64",
+		"files.associations": {
+			"limits": "cpp"
+		}
+	},
+
+	"tasks": {		
+		"version": "2.0.0",
+		"tasks":[
+			{
+				"type": "shell",
+				"label": "Make",
+				"command": "make",
+				"args": [ ],
+				"options": {
+					"cwd": "${workspaceFolder:Tbox}"
+				},            
+				"group": {
+					"kind": "build",
+					"isDefault": true
+				}            
+			},
+    	] 
+	},   
+
+	"launch": {
+		"version": "0.2.0",
+        "configurations": [			
+			{
+				"name": "PID",
+				"type": "cppdbg",
+                "request": "launch",
+                "program": "${workspaceFolder:DAC}/build/Mpad",
+                "args": [],
+                "stopAtEntry": true,
+                "cwd": "${workspaceFolder:DAC}",
+                "environment": [],
+                "externalConsole": false,
+                "MIMode": "gdb",
+                "setupCommands": [
+                    {
+                        "description": "Enable pretty-printing for gdb",
+                        "text": "-enable-pretty-printing",
+                        "ignoreFailures": true
+                    },
+                    {
+                        "description": "SIGINT will pass through gdb",
+                        "text": "handle SIGINT pass",
+                        "ignoreFailures": true
+                    },
+                    {
+                        "description": "SIGINT will not be printed by gdb",
+                        "text": "handle SIGINT noprint",
+                        "ignoreFailures": true
+                    }
+                ],
+                "preLaunchTask": "Make",
+                "miDebuggerPath": "/usr/bin/gdb"
+			},
+			    
+		]		
+	},
+
+	
+}
+
+
