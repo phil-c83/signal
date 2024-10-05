@@ -32,7 +32,7 @@ BUILD_DIR = build
 ######################################
 # C sources
 
-C_SOURCES += main.cpp $(SIG_ROOT)/signal.cpp  
+CPP_SOURCES = $(PRJ_ROOT)/main.cpp #$(SIG_ROOT)/signal.cpp 
 
 
 #######################################
@@ -75,12 +75,12 @@ AS_INCLUDES =
 # C includes
 C_INCLUDES +=  \
 -I$(PRJ_ROOT) \
--I$(DAC_ROOT)/Inc
+-I$(SIG_ROOT)
 
 # compile gcc flags
-ASFLAGS = $(AS_INCLUDES) $(OPT) -Wall -fdata-sections -ffunction-sections
+ASFLAGS = $(AS_INCLUDES) $(OPT) -Wall # -fdata-sections -ffunction-sections
 
-CFLAGS = $(C_INCLUDES) $(OPT) -Wall -fdata-sections -ffunction-sections -Wunused-function
+CFLAGS = $(C_INCLUDES) $(OPT) -Wall  # -fdata-sections -ffunction-sections -Wunused-function
 
 ifeq ($(DEBUG), 1)
 CFLAGS += -g -gdwarf-2
@@ -101,7 +101,7 @@ LIBDIR =
 LDFLAGS = $(LIBDIR) $(LIBS) -Wl,-Map=$(BUILD_DIR)/$(TARGET).map,--cref -Wl,--gc-sections
 
 # default action: build all
-all: relink $(BUILD_DIR)/$(TARGET) 
+all: $(BUILD_DIR)/$(TARGET) 
 .PHONY: relink
 relink:	
 	-[ -e $(BUILD_DIR)/$(TARGET) ] && rm $(BUILD_DIR)/$(TARGET)
@@ -110,14 +110,18 @@ relink:
 # build the application
 #######################################
 # list of objects
-OBJECTS = $(addprefix $(BUILD_DIR)/,$(notdir $(C_SOURCES:.cpp=.o)))
-vpath %.cpp $(sort $(dir $(C_SOURCES)))
+OBJECTS = $(addprefix $(BUILD_DIR)/,$(notdir $(CPP_SOURCES:.cpp=.o)))
+vpath %.cpp $(sort $(dir $(CPP_SOURCES)))
 
-OBJECTS += $(addprefix $(BUILD_DIR)/,$(notdir $(C_SOURCES:.c=.o)))
-vpath %.c $(sort $(dir $(C_SOURCES)))
+#OBJECTS += $(addprefix $(BUILD_DIR)/,$(notdir $(C_SOURCES:.c=.o)))
+#vpath %.c $(sort $(dir $(C_SOURCES)))
+
 # list of ASM program objects
 OBJECTS += $(addprefix $(BUILD_DIR)/,$(notdir $(ASM_SOURCES:.s=.o)))
 vpath %.s $(sort $(dir $(ASM_SOURCES)))
+
+#$(info CPP_SOURCES: $(CPP_SOURCES))
+#$(info OBJECT: $(OBJECTS))
 
 $(BUILD_DIR)/%.o: %.cpp Makefile | $(BUILD_DIR) 
 	$(CPP) -c $(CFLAGS) -Wa,-a,-ad,-alms=$(BUILD_DIR)/$(notdir $(<:.cpp=.lst)) $< -o $@
@@ -129,7 +133,7 @@ $(BUILD_DIR)/%.o: %.s Makefile | $(BUILD_DIR)
 	$(AS) -c $(CFLAGS) $< -o $@
 
 $(BUILD_DIR)/$(TARGET): $(OBJECTS) Makefile
-	$(CC) $(OBJECTS) $(LDFLAGS) -o $@
+	$(CPP) $(OBJECTS) $(LDFLAGS) -o $@
 	$(SZ) $@
 
 	

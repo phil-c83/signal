@@ -1,75 +1,62 @@
 #ifdef __cplusplus
 #include <cmath>
 #include <cstdint>
-#include "signal.hpp"
-
 
 template <typename T>
 void Signal<T>::generate(T t0,T Fe,T v[],const unsigned n)
-{
-    iter.init(t0,Fe,n);
-    for( unsigned k=0 ; iter.next() == true; ++k)
-        v[k] = iter.get();    
+{   
+    T t{t0};
+    for( unsigned k=0 ; k<n ; ++k, t+=1/Fe )
+        v[k] = k < this->n ? sample(t) : T{0.0};   
 }
 
 template <typename T>
 void Signal<T>::mult(Signal<T>& s,T t0,T Fe,T v[],const unsigned n)
-{
-    iter.init(t0,Fe,n);
-    s.iter.init(t0,Fe,n);
-
-    for( unsigned k=0 ; s.iter.next() == true && iter.next() == true; ++k)
-        v[k] = iter.get() * s.iter.get(); 
+{    
+    T t{t0};
+    for( unsigned k=0 ; k<n ; ++k, t+=1/Fe )            
+        v[k] = (k < this->n ? sample(t) : T{0.0}) * 
+               (k < s.n ? s.sample(t) : T{0.0});    
 }
 
 template <typename T>
 void Signal<T>::add(Signal<T>& s,T t0,T Fe,T v[],const unsigned n)
-{
-    iter.init(t0,Fe,n);
-    s.iter.init(t0,Fe,n);
-
-    for( unsigned k=0 ; s.iter.next() == true && iter.next() == true; ++k)
-        v[k] = iter.get() + s.iter.get(); 
+{     
+    T t{t0};
+    for( unsigned k=0 ; k<n ; ++k, t+=1/Fe )            
+        v[k] = (k < this->n ? sample(t) : T{0.0}) + 
+               (k < s.n ? s.sample(t) : T{0.0});   
 }
 
 template <typename T>
 void Signal<T>::sub(Signal<T>& s,T t0,T Fe,T v[],const unsigned n)
-{
-    iter.init(t0,Fe,n);
-    s.iter.init(t0,Fe,n);
-
-    for( unsigned k=0 ; s.iter.next() == true && iter.next() == true; ++k)
-        v[k] = iter.get() - s.iter.get(); 
+{   
+    T t{t0};  
+    for( unsigned k=0 ; k<n ; ++k, t+=1/Fe )            
+        v[k] = (k < this->n ? sample(t) : T{0.0}) - 
+               (k < s.n ? s.sample(t) : T{0.0});    
 }
 
 template <typename T>
 void Signal<T>::div(Signal<T>& s,T t0,T Fe,T v[],const unsigned n)
-{
-    iter.init(t0,Fe,n);
-    s.iter.init(t0,Fe,n);
-
-    for( unsigned k=0 ; s.iter.next() == true && iter.next() == true; ++k)
-        v[k] = iter.get() / s.iter.get(); 
+{ // TODO see how to handle div by zero, perhaps keeping Inf or NaN is right     
+    T t{t0};
+    for( unsigned k=0 ; k<n ; ++k, t+=1/Fe )            
+        v[k] = (k < this->n ? sample(t) : T{0.0}) / 
+               (k < s.n ? s.sample(t) : T{0.0});    
 }
 
 template <typename T>
 void Signal<T>::compose(Signal<T>& s,T t0,T Fe,T v[],const unsigned n)
-{    
-    s.iter.init(t0,Fe,n);
-
-    for( unsigned k=0 ; s.iter.next() == true ; ++k)
-        v[k] =  sample(s.iter.get()); 
+{   
+    T t{t0};     
+    for( unsigned k=0 ; k<n ; ++k, t+=1/Fe ) 
+    {           
+        T x  = k < s.n ? s.sample(t) : T{0.0};
+        v[k] = k < this->n ? sample(x) : T{0.0}; 
+    }
 }
 
-template <typename T>
-void Signal<T>::config(T tmin,T tmax,T dilatation=T{1},T translation=T{0},T scale=T{1})
-{    
-    dlate{dilatation};
-    trate{translation};
-    scale{scale};
-    tmin{tmin};
-    tmax{tmax};             
-}
 
 
 
@@ -87,20 +74,19 @@ void Signal<T>::config(T tmin,T tmax,T dilatation=T{1},T translation=T{0},T scal
 template <typename T,typename U>
 void cov(T x[],T y[],const unsigned n,U& covxx,U& covyy,U& covxy)
 {
-    uint64_t sx=0,sy=0,sx2=0,sy2=0,sxy=0;
-    float nf = (float)n;
+    U sx=0,sy=0,sx2=0,sy2=0,sxy=0;    
 
-    for( uint32_t i=0; i<n; ++i){
-        sx  += x[i];
-        sy  += y[i];
-        sx2 += x[i]*x[i];
-        sy2 += y[i]*y[i];
+    for( unsigned i=0; i<n; ++i){
+        sx  += U{x[i]};
+        sy  += U{y[i]};
+        sx2 += U{x[i]}*U{x[i]};
+        sy2 += U{y[i]}*U{y[i]};
         sxy += sx*sy;
     }
 
-    covxx = sx2/nf - pow(sx/nf,2.0f);
-    covyy = sy2/nf - pow(sy/nf,2.0f);
-    covxy = sxy/nf - (sx*sy) / pow(nf,2.0f);
+    covxx = sx2/U{n} - pow(sx/U{n},U{2.0});
+    covyy = sy2/U{n} - pow(sy/U{n},U{2.0});
+    covxy = sxy/U{n} - (sx*sy) / pow(U{n},U{2.0});
 }
 
 #endif //__cplusplus

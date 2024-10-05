@@ -1,7 +1,10 @@
 #include <fstream>
+#include <iostream>
 #include "signal/sinus.hpp"
+#include "signal/bump.hpp"
+#include "signal/ramp.hpp"
 
-const float Fe = 50e3f;
+const float Fe = 100.0f;
 const float t0=0.0f;
 const float f0=1e3f;
 const float f1=5e3f; 
@@ -10,9 +13,10 @@ template <typename T>
 static void print_mfile(const char *fname,const T v[], const unsigned n)
 {
     std::ofstream ost {fname}; 
-    if (!ost) error("can't open output file ",fname);
+    if (!ost) 
+        std::cerr << "can't open output file " << fname;
 
-    for(int i=0 ; i<n ; ++i)
+    for(unsigned i=0 ; i<n ; ++i)
     { 
         ost << v[i] << " ";    
     }
@@ -22,13 +26,25 @@ static void print_mfile(const char *fname,const T v[], const unsigned n)
 
 int main()
 {
-    unsigned nitems = 100U;
+    const unsigned nitems{1000U};
     float v1[nitems];
     float v2[nitems];
     float v3[nitems];
 
-    Sinus<float> sinoid;
-    sinoid.generate(t0,Fe,v1,nitems);
+    Sinus<float> sig_sin(nitems);   
+    sig_sin.generate(t0,Fe,v1,nitems);
+    print_mfile("sinus.m",v1,nitems);
+
+    Bump<float> sig_bump(0.1f,0.5f,nitems);
+    sig_bump.generate(t0,Fe,v2,nitems);
+    print_mfile("bump.m",v2,nitems);
+
+    Ramp<float> sig_ramp(0.5,-1.0,nitems);
+    sig_ramp.generate(t0,Fe,v3,nitems);
+    print_mfile("ramp.m",v3,nitems);
+
+
+
 
 
 

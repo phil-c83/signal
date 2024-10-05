@@ -1,26 +1,24 @@
 #ifndef __bump__
+#define __bump__
 #include "signal.hpp"
 
+
 template <typename T = float>
-class Bump : public Signal
+class Bump : public Signal<T>
 {
 public:
-    explicit Bump(T tmin,T tmax): Signal() { config(tmin,tmax);}    
+    explicit Bump(T tmin,T tmax,unsigned n) : 
+            Signal<T>{n} {Signal<T>::tmin=tmin ; Signal<T>::tmax=tmax; } 
+                                                  
 
-    T   sample(T t)
+    T sample(T t)
     {
-        T u = (t-trate) / dlate;
-        if( t0>tmin && t0<tmax )
-            return scale * exp(-1/tmin*tmax)*exp(1/((u-tmin)*(u-tmax)));
+        T u = (t-Signal<T>::trate) / Signal<T>::dlate;
+        if( u>Signal<T>::tmin && u<Signal<T>::tmax )
+            return Signal<T>::scale * exp( -1/(Signal<T>::tmin*Signal<T>::tmax) * exp(1/((u-Signal<T>::tmin)*(u-Signal<T>::tmax))));
         else
             return 0;    
-    };
-    
-
-private:
-    T tmin;
-    T tmax;
-
+    }
 };
 
 #endif //__bump__

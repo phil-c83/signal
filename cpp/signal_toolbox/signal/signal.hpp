@@ -4,81 +4,40 @@
 #ifdef __cplusplus
 #include <cmath>
 
-template <typename T>
-class Signal;
-
-template <typename T = float>
-class Signal_iterator
-{
-public:
-
-    explicit Signal_iterator(T t0,T Fe,unsigned n,Signal<T>& s) 
-    {
-        sig=s;
-        init(t0,Fe,n); 
-    }
-
-    void init(T t0,T Fe,unsigned n) {t=t0-1/Fe;Fe=Fe;count=n;cur=0;}
-
-    bool next() 
-    {
-        if( cur < count )
-        {
-            t += 1/Fe;
-            cur ++;
-            return true;
-        }
-        else
-            return false;
-    }
-
-    T get()
-    {
-        return sig.sample(t); 
-    }
-
-private:
-
-    unsigned count;
-    unsigned cur;
-    T Fe;
-    T t;
-    Signal<T>& sig;
-
-};
-
-
 
 template <typename T = float>
 class Signal 
 {
 public:  
+    const T MINUS_INF{T {-1.0} / T {0.0}};
+    const T PLUS_INF{T {1.0} / T {0.0}};  
+
+    explicit Signal(unsigned k) {n=k;}
     virtual T    sample(T t)=0;
-    virtual void config(T tmin,T tmax,T dilatation,T translation,T scale)  // domain,translation,dilatation and scale for signals 
+    virtual void config(unsigned n,T tmin,T tmax,T dilatation=T{1.0},T translation=T{0.0},T scale=T{1.0})  //non zero samples number,domain,translation,dilatation and scale for signals 
     { // signal_2(t) = signal_1((t-trate)/dlate) * scale
-        dlate=dilatation;trate=translation;scale=scale;
+        Signal<T>::n=n;Signal<T>::tmin=tmin;Signal<T>::tmax=tmax;dlate=dilatation;trate=translation;scale=scale;
     };    
-    virtual void generate(T t0,T Fe,T v[],const unsigned n);             // generate a signal vector in v
-    virtual void mult(Signal<T>& s,T t0,T Fe,T v[],const unsigned n);    // multiply with s and store result in v
-    virtual void add(Signal<T>& s,T t0,T Fe,T v[],const unsigned n);     // add s and store result in v
-    virtual void sub(Signal<T>& s,T t0,T Fe,T v[],const unsigned n);     // subtract s and store result in v
-    virtual void div(Signal<T>& s,T t0,T Fe,T v[],const unsigned n)=0;     // div with s and store result in v
-    virtual void compose(Signal<T>& s,T t0,T Fe,T v[],const unsigned n)=0; // compose with s ie this->sample(s.sample(t))
-    virtual T    cov(Signal<T>& s,T t0,T Fe,const unsigned n)=0;           // covariance with s 
-    virtual void conv(Signal<T>& s,T t0,T Fe,T v[],const unsigned n)=0;    // convolution with s
+    void generate(T t0,T Fe,T v[],const unsigned n);             // generate a signal vector in v
+    void mult(Signal<T>& s,T t0,T Fe,T v[],const unsigned n);    // multiply with s and store result in v
+    void add(Signal<T>& s,T t0,T Fe,T v[],const unsigned n);     // add s and store result in v
+    void sub(Signal<T>& s,T t0,T Fe,T v[],const unsigned n);     // subtract s and store result in v
+    void div(Signal<T>& s,T t0,T Fe,T v[],const unsigned n);     // div with s and store result in v
+    void compose(Signal<T>& s,T t0,T Fe,T v[],const unsigned n); // compose with s ie this->sample(s.sample(t))
+    
+    //virtual void conv(Signal<T>& s,T t0,T Fe,T v[],const unsigned n);    // convolution with s
     ~Signal() {};
 
-protected:
-    Signal_iterator<T> iter;
-    T tmin  = T{- std::numeric_limits<T>::infinity};
-    T tmax  = T{+ std::numeric_limits<T>::infinity};      
-    T dlate = T{1};  // dilatation factor
-    T trate = T{0};  // translation
-    T scale = T{1};  // scale factor 
-
+protected:    
+    unsigned n; // max non zero samples generate() yield 
+    T tmin {MINUS_INF}; // TODO see {std::numeric_limits<T>::infinity};
+    T tmax {PLUS_INF} ; 
+    T dlate {1.0};  // dilatation factor for t
+    T trate {0.0};  // translation for t
+    T scale {1.0};  // scale factor for f(t)
 };
 
-
+#include "signal.cpp"
 
 #endif //__cplusplus
 

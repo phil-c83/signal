@@ -21,7 +21,8 @@
 		"C_Cpp.default.compilerPath":"gcc",
 		"C_Cpp.default.intelliSenseMode": "gcc-x64",
 		"files.associations": {
-			"limits": "cpp"
+			"limits": "cpp",
+			"algorithm": "cpp"
 		}
 	},
 
@@ -48,13 +49,13 @@
 		"version": "0.2.0",
         "configurations": [			
 			{
-				"name": "PID",
+				"name": "Signal",
 				"type": "cppdbg",
                 "request": "launch",
-                "program": "${workspaceFolder:DAC}/build/Mpad",
+                "program": "${workspaceFolder:Tbox}/build/signal",
                 "args": [],
                 "stopAtEntry": true,
-                "cwd": "${workspaceFolder:DAC}",
+                "cwd": "${workspaceFolder:Tbox}",
                 "environment": [],
                 "externalConsole": false,
                 "MIMode": "gdb",

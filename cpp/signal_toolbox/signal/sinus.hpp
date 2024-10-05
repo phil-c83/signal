@@ -1,16 +1,19 @@
 #ifndef __sinus__
+#define __sinus__
 #include "signal.hpp"
 
 template <typename T = float>
 class Sinus : public Signal<T>
 {
 public:
-    explicit Sinus(): Signal<T>() {}    
 
-    void config(T tmin,T tmax,T dilatation=T{1},T translation=T{0},T scale=T{1})
+    Sinus(unsigned n) : Signal<T>{n} {}    
+
+    virtual void config(unsigned n,T tmin,T tmax,
+                        T dilatation=T{1},T translation=T{0},T scale=T{1}) override
     {
-        Signal<T>::config(tmin,tmax);
-        if(tmin == - std::numeric_limits<T>::infinity && tmax == + std::numeric_limits<T>::infinity)
+        Signal<T>::config(n,tmin,tmax,dilatation,translation,scale);
+        if(tmin == Signal<T>::MINUS_INF && tmax == Signal<T>::PLUS_INF)
             dom = false;
         else
             dom = true;    
@@ -20,20 +23,14 @@ public:
     {
         T u = (t-Signal<T>::trate) / Signal<T>::dlate;
 
-        if(dom && t>=Signal<T>::tmin && t<=Signal<T>::tmax)
-            return sin(u);        
-        if(t>tmin && t<tmax)
-            return Signal<T>::scale * exp(-1/a*b)*exp(1/((u-tmin)*(u-tmax)));
-        else
+        if(dom == false || (u>=Signal<T>::tmin && u<=Signal<T>::tmax)) 
+            return Signal<T>::scale * sin(u);                
+        else 
             return 0;    
-    };
+    }   
 
-    void generate(T t0,T Fe,T v[],const unsigned n) { Signal<T>::generate(t0,Fe,v,n); }
-
-protected:
-    T tmin = T{- std::numeric_limits<T>::infinity};
-    T tmax = T{+ std::numeric_limits<T>::infinity};
-    bool dom = false;    
+protected:    
+    bool dom{false};    
 };
 
-#endif //__bump__
+#endif //__sinus__
