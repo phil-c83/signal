@@ -5,18 +5,30 @@
 #include <cmath>
 
 
+template <typename T>
+class Dom
+{
+public:
+    const T MINUS_INF{T {-1.0} / T {0.0}};
+    const T PLUS_INF{T {1.0} / T {0.0}};   
+
+    Dom(T tmin=MINUS_INF,T tmax=PLUS_INF) : tmin{tmin},tmax{tmax} {};
+protected:
+    T tmin; // TODO see {std::numeric_limits<T>::infinity};
+    T tmax;     
+};
+
+
 template <typename T = float>
 class Signal 
 {
-public:  
-    const T MINUS_INF{T {-1.0} / T {0.0}};
-    const T PLUS_INF{T {1.0} / T {0.0}};  
+public:      
 
-    explicit Signal(unsigned k) {n=k;}
-    virtual T    sample(T t)=0;
-    virtual void config(unsigned n,T tmin,T tmax,T dilatation=T{1.0},T translation=T{0.0},T scale=T{1.0})  //non zero samples number,domain,translation,dilatation and scale for signals 
+    explicit Signal(Dom<T> dom) : dom{dom} {};
+    virtual T sample(T t)=0;
+    virtual void config(Dom<T> dom,T dilatation=T{1.0},T translation=T{0.0},T scale=T{1.0})  //domain,translation,dilatation and scale for signals 
     { // signal_2(t) = signal_1((t-trate)/dlate) * scale
-        Signal<T>::n=n;Signal<T>::tmin=tmin;Signal<T>::tmax=tmax;dlate=dilatation;trate=translation;scale=scale;
+        Signal<T>::dom=dom;dlate=dilatation;trate=translation;scale=scale;
     };    
     void generate(T t0,T Fe,T v[],const unsigned n);             // generate a signal vector in v
     void mult(Signal<T>& s,T t0,T Fe,T v[],const unsigned n);    // multiply with s and store result in v
@@ -29,12 +41,20 @@ public:
     ~Signal() {};
 
 protected:    
-    unsigned n; // max non zero samples generate() yield 
-    T tmin {MINUS_INF}; // TODO see {std::numeric_limits<T>::infinity};
-    T tmax {PLUS_INF} ; 
+    Dom<T> dom;    
+    
     T dlate {1.0};  // dilatation factor for t
     T trate {0.0};  // translation for t
     T scale {1.0};  // scale factor for f(t)
+
+private:
+    T combine(T& x,T& y,T (*op)(T& x,T& y)) {op(x,y);}
+    void iter_combine(Signal<T>& s,T t0,T Fe,T v[],const unsigned n,T (*op)(T& x,T& y))
+    {
+        T t{t0};
+        for( unsigned k=0 ; k<n ; ++k, t+=1/Fe )            
+            v[k] = op(sample(t),s.sample(t)); 
+    }
 };
 
 #include "signal.cpp"
