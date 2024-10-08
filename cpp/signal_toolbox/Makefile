@@ -80,7 +80,7 @@ C_INCLUDES +=  \
 # compile gcc flags
 ASFLAGS = $(AS_INCLUDES) $(OPT) -Wall # -fdata-sections -ffunction-sections
 
-CFLAGS = $(C_INCLUDES) $(OPT) -Wall  # -fdata-sections -ffunction-sections -Wunused-function
+CFLAGS = $(C_INCLUDES) $(OPT) -Wall  -std=c++20 # -fdata-sections -ffunction-sections -Wunused-function
 
 ifeq ($(DEBUG), 1)
 CFLAGS += -g -gdwarf-2

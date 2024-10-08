@@ -1,24 +1,39 @@
 #ifndef __bump__
 #define __bump__
-#include "signal.hpp"
 
+#ifdef __cplusplus
+
+#include "signal.hpp"
 
 template <typename T = float>
 class Bump : public Signal<T>
 {
+using Signal<T>::dom;
 public:
-    explicit Bump(T tmin,T tmax,unsigned n) : 
-            Signal<T>{n} {Signal<T>::tmin=tmin ; Signal<T>::tmax=tmax; } 
-                                                  
+    Bump(Dom<T>& dom) : Signal<T>{dom}
+    { 
+        Dom<T> ndom{dom};
+        if (ndom.tmin == 0.0)
+            ndom.tmin = std::numeric_limits<T>::epsilon();
+        else if(ndom.tmax == 0.0)
+            ndom.tmax = std::numeric_limits<T>::epsilon();
+        
+        Signal<T>::dom.tmin = ndom.tmin;
+        Signal<T>::dom.tmax = ndom.tmax;
+        // d/dt bump((a+b)/2) = 0, bump((a+b)/2) = exp(-1/((b-a)/2)^2)
+        norm_factor = exp(1.0/pow((ndom.tmax - ndom.tmin)/2.0,2.0));
+        std::cout << "norm =" << norm_factor << std::endl;
+    }                                                   
 
     T sample(T t)
-    {
-        T u = (t-Signal<T>::trate) / Signal<T>::dlate;
-        if( u>Signal<T>::tmin && u<Signal<T>::tmax )
-            return Signal<T>::scale * exp( -1/(Signal<T>::tmin*Signal<T>::tmax) * exp(1/((u-Signal<T>::tmin)*(u-Signal<T>::tmax))));
+    {        
+        if(dom.is_in_open(t))
+            return  norm_factor * exp(1/((t-dom.tmin)*(t-dom.tmax))) ;
         else
-            return 0;    
+            return 0.0;    
     }
+protected:
+    T norm_factor;    
 };
-
+#endif //__cplusplus
 #endif //__bump__
